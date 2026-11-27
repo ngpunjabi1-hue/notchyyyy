@@ -154,6 +154,16 @@ public static class WinSelfTest
             int expect = LT.Light ? 249 : 0;
             Check("open body drawn in the theme's background", Math.Abs(br - expect) <= 3 && Math.Abs(bg - expect) <= 3 && Math.Abs(bb - expect) <= 3, $"pixel {br},{bg},{bb}");
 
+            // text is smoothed in grayscale: no red/blue sub-pixel fringes on the neutral "Home" label
+            int fringe = 0;
+            for (int y = rc.T + Px(8); y < rc.T + Px(24); y++)
+            for (int x = rc.L + Px(14 + 18 + 70); x < rc.L + Px(14 + 18 + 115); x++)
+            {
+                var (r, g, b) = open.At(x, y);
+                fringe = Math.Max(fringe, Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b)));
+            }
+            Check("text has no colour fringes (grayscale smoothing)", fringe <= 16, $"largest channel spread in the Home label: {fringe}");
+
             // moving inside keeps it open; leaving closes it
             SetCursorPos(body.X, body.Y);
             await Wait(0.8);

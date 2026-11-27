@@ -66,6 +66,9 @@ public sealed class Shell
     {
         if (Theme.Debug.Has("--demo")) Model.MusicPlaying = true;
         Stage = new NotchStage(Model, Clock) { Width = StageWidth, Height = StageHeight };
+        // Grayscale text smoothing, as on the Mac: Windows' default sub-pixel (ClearType) smoothing left red/blue
+        // fringes on the text (seen on the Windows runner), and fringes turn into halos when text fades over a transparent window.
+        TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);
         Tracker = new HoverTracker(Model, Clock);
         Window = _preview ? MakePreview() : MakeOverlay();
         Tracker.SetInteractive = on => { if (!_preview) Overlay.SetClickThrough(Window, !on); };
