@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaVersion>12.1.6</AvaloniaVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Avalonia 12 ships analyzers built for a newer compiler than the .NET 8 SDK; they are not needed (no XAML). -->
+    <NoWarn>$(NoWarn);CS9057</NoWarn>
+  </PropertyGroup>
+</Project>
