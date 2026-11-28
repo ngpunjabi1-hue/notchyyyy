@@ -6,7 +6,7 @@ namespace Notchyyyy.Theme;
 public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note,
     Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare,
     Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne, Trash, TextLines, Photo, Palette, Shapes, Check,
-    Pencil, Search, PlusCircle, CheckCircle }
+    Pencil, Search, PlusCircle, CheckCircle, Cpu, Gpu, Memory, Drive }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -395,6 +395,36 @@ public static class Icons
                 Fill(new CombinedGeometry(GeometryCombineMode.Exclude, disc, tick));
                 break;
             }
+            case IconKind.Cpu:          // a chip: a square with a die cut out and pins on every side
+            {
+                Shape(new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(5, 5, 14, 14), 2.6, 2.6), new RectangleGeometry(new Rect(9, 9, 6, 6), 1, 1)));
+                foreach (var p in new[] { 9.0, 12, 15 })
+                {
+                    Fill(new RectangleGeometry(new Rect(p - 0.8, 1.6, 1.6, 2.6), 0.8, 0.8));
+                    Fill(new RectangleGeometry(new Rect(p - 0.8, 19.8, 1.6, 2.6), 0.8, 0.8));
+                    Fill(new RectangleGeometry(new Rect(1.6, p - 0.8, 2.6, 1.6), 0.8, 0.8));
+                    Fill(new RectangleGeometry(new Rect(19.8, p - 0.8, 2.6, 1.6), 0.8, 0.8));
+                }
+                break;
+            }
+            case IconKind.Gpu:          // a graphics card: a board with a fan, and its bracket
+            {
+                Shape(new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(3, 6, 18, 11), 2.4, 2.4), new EllipseGeometry(new Rect(10.2, 8.2, 6.6, 6.6))));
+                Fill(new RectangleGeometry(new Rect(5.5, 17.6, 9, 2), 0.8, 0.8));
+                Dot(new Point(13.5, 11.5), 1.3);
+                break;
+            }
+            case IconKind.Memory:       // a memory stick: a long board with chips cut out and a row of contacts
+            {
+                Geometry g = new RectangleGeometry(new Rect(2.4, 6.4, 19.2, 9.6), 2, 2);
+                foreach (var x in new[] { 5.2, 10.2, 15.2 }) g = new CombinedGeometry(GeometryCombineMode.Exclude, g, new RectangleGeometry(new Rect(x, 8.6, 3.6, 4.6), 0.8, 0.8));
+                Shape(g);
+                foreach (var x in new[] { 4.6, 7.6, 10.6, 13.6, 16.6 }) Fill(new RectangleGeometry(new Rect(x, 16.8, 1.8, 2.6), 0.6, 0.6));
+                break;
+            }
+            case IconKind.Drive:        // a drive: a rounded slab with a light
+                Shape(new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(2.6, 7, 18.8, 10), 3, 3), new EllipseGeometry(new Rect(15.6, 10.6, 2.8, 2.8))));
+                break;
             case IconKind.AppSquare:
                 Shape(new RectangleGeometry(new Rect(4, 4, 16, 16), 4.4, 4.4));
                 break;

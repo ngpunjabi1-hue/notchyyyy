@@ -80,6 +80,8 @@ public sealed class Shell
             : new Clipboard.MemoryClipboard());
         // apps: the Start menu on Windows; a stand-in list on the Mac preview
         Model.Apps.Start(OperatingSystem.IsWindows() ? new Platform.WinApps() : new Apps.SampleCatalog());
+        // CPU, GPU, memory, storage: Windows' own counters (a calm stand-in on the Mac preview)
+        Model.System.Start(OperatingSystem.IsWindows() ? new Platform.WinSystem() : new SystemInfo.SampleSystem());
         // task reminders: Windows notifications (remembered only, on the Mac preview)
 #if WINDOWS
         Model.Tasks.Start(new Platform.WinReminders());

@@ -97,6 +97,7 @@ public sealed class ExpandedBody : Grid
     private AppsView? _apps;
     private TodayView? _today;
     private StopwatchView? _stopwatch;
+    private SystemView? _system;
     private Control Content(Tab tab) => tab switch
     {
         Tab.Home => _home ??= new HomeView(_m, _clock),
@@ -105,6 +106,7 @@ public sealed class ExpandedBody : Grid
         Tab.Apps => _apps ??= new AppsView(_m, _clock),
         Tab.Today => _today ??= new TodayView(_m, _clock),
         Tab.Stopwatch => _stopwatch ??= new StopwatchView(_m, _clock),
+        Tab.System => _system ??= new SystemView(_m, _clock),
         Tab.Settings => new SettingsView(_m, _clock),
         _ => new TabPlaceholder(tab),
     };
@@ -115,6 +117,7 @@ public sealed class ExpandedBody : Grid
     public AppsView? CurrentApps => _content.Current as AppsView;
     public TodayView? CurrentToday => _content.Current as TodayView;
     public StopwatchView? CurrentStopwatch => _content.Current as StopwatchView;
+    public SystemView? CurrentSystem => _content.Current as SystemView;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {

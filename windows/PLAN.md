@@ -15,10 +15,10 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 4 ✅ (awaiting your OK; smoothness to confirm on your laptop) | **Sprout** (the painter, poses and morphing, gaze, states) in the closed pill and on Home; **Home** (one-line greeting, icon quick actions). | Frame strips of every mood and each transition. |
 | 5 ✅ (awaiting your OK) | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
 | 6 ✅ (awaiting your OK) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
-| 7 (in review) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
-| 8 (in review) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
-| 9 (in review) | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
-| 10 | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
+| 7 ✅ (awaiting your OK) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
+| 8 ✅ (awaiting your OK) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
+| 9 ✅ (awaiting your OK) | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
+| 10 (in review) | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
 | 11 | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
 | 12 | **Installer + auto-updates**: Velopack releases, one-line PowerShell installer (`irm … | iex`), data kept across updates. | Install, update and uninstall on the runner; final check on your laptop. Nothing is published until you say so, and I'll ask which repo first. |
 
@@ -65,6 +65,9 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
   user's registry (as unpackaged apps do), so they work before the installer exists. Times in a task's title are
   found by Notchyyyy's own reader ("5pm", "5:30 pm", "17:00", "at 5", "noon"; the Mac uses its date detector); the
   time field is a compact HH:mm field (click the hours or minutes, then arrows, the wheel or digits).
+- **System on Windows** reads what Task Manager reads, without administrator rights: CPU per core from the kernel's
+  processor times, GPU from the "GPU Engine" counters (3D engines, the busiest graphics chip), memory in use, and the
+  system drive. A machine without GPU counters says so instead of showing 0 %.
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

@@ -578,6 +578,32 @@ public static class WinSelfTest
                 Keys(0x1B);
                 await Wait(0.8);
             }
+            // ---- step 10: the machine's own numbers ----
+            {
+                var sys = sh.Model.System;
+                for (int i = 0; i < 40 && sys.Samples < 3; i++) await Wait(0.1);
+                Check("reads CPU, memory and storage", sys.Samples >= 3 && sys.Cores.Length == Environment.ProcessorCount && sys.MemTotal > 1e9 && sys.DiskTotal > 1e9,
+                    $"{sys.Samples} readings, {sys.Cores.Length} cores, CPU {sys.Cpu:P0}, memory {SystemInfo.SystemMonitor.Bytes(sys.MemUsed)} of {SystemInfo.SystemMonitor.Bytes(sys.MemTotal)}, " +
+                    $"disk {SystemInfo.SystemMonitor.Bytes(sys.DiskUsed)} of {SystemInfo.SystemMonitor.Bytes(sys.DiskTotal)}, GPU {(sys.Gpu is { } g ? g.ToString("P0") : "none")} ({sys.GpuName}), chip '{sys.Chip}'");
+                Log($"INFO chip '{sys.Chip}', graphics '{sys.GpuName}'");
+                // busy every core for 3 s: the CPU reading must rise with it
+                double calm = sys.Cpu;
+                using (var stop = new CancellationTokenSource(TimeSpan.FromSeconds(3.2)))
+                {
+                    var spin = Enumerable.Range(0, Environment.ProcessorCount).Select(_ => Task.Run(() => { double x = 0; while (!stop.IsCancellationRequested) x += Math.Sqrt(x + 1); return x; })).ToArray();
+                    await Wait(2.8);
+                    double busy = sys.Cpu;
+                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm, $"calm {calm:P0}, busy {busy:P0}");
+                    await Task.WhenAll(spin);
+                }
+                sh.Model.Tab = Tab.System;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.5);
+                Check("opens on the System tab", sh.Stage.Body.CurrentSystem is not null);
+                Save(Capture(), Path.Combine(dir, $"{theme}-17-system.png"));
+                Keys(0x1B);
+                await Wait(0.8);
+            }
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

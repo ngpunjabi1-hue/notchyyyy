@@ -107,6 +107,9 @@ public sealed class NotchModel
     public global::Notchyyyy.Today.Tasks Tasks { get; } = new();
     public global::Notchyyyy.Today.StopwatchModel Stopwatch { get; } = new(new Motion.SystemClock());
 
+    /// CPU, GPU, memory and storage (Windows' counters; a calm stand-in on the Mac preview).
+    public global::Notchyyyy.SystemInfo.SystemMonitor System { get; } = new();
+
     public NotchModel()
     {
         Media = new global::Notchyyyy.Media.MediaPlayer(new Motion.SystemClock());

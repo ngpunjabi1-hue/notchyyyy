@@ -301,6 +301,7 @@ public sealed class NotchStage : Panel
         // the big Sprout on Home draws only while the open body can be seen
         if (_bodyView.CurrentHome is { } home) home.Sprout.Active = _bodyShown;
         if (_bodyView.CurrentMedia is { } media) media.Active = _bodyShown;
+        if (_bodyView.CurrentSystem is { } system) system.Active = _bodyShown;
 
         UpdatePill(now);
         _bodyView.Update(now);
