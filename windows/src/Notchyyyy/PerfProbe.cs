@@ -91,7 +91,7 @@ public static class PerfProbe
 
             var sb = new StringBuilder();
             double hz = Hz(frames.Select(f => f.T).ToList());
-            sb.AppendLine($"render scaling {s.Window.RenderScaling}, display ~{hz:0} Hz, OS {Environment.OSVersion}");
+            sb.AppendLine($"render scaling {s.Window.RenderScaling}, display ~{hz:0} Hz, OS {Environment.OSVersion}, renderer: {Renderer()}");
             sb.AppendLine("display frames (the notch's own motion runs at the display rate):");
             sb.AppendLine("phase                    frames  median ms  p95 ms  worst ms  late  cpu %");
             foreach (var ph in phases.Where(p => p.Name != "warmup"))
@@ -140,6 +140,17 @@ public static class PerfProbe
             Console.WriteLine(sb.ToString());
             Environment.Exit(0);
         }, TimeSpan.FromSeconds(13.0));
+    }
+
+    /// Which way frames are drawn: through the graphics chip (ANGLE on Direct3D 11 on Windows) or in software.
+    private static string Renderer()
+    {
+        if (!OperatingSystem.IsWindows()) return OperatingSystem.IsMacOS() ? "Metal/OpenGL via Avalonia.Native" : "default";
+        var mods = Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Select(m => m.ModuleName.ToLowerInvariant()).ToHashSet();
+        bool angle = mods.Any(m => m.Contains("libglesv2") || m.Contains("libegl"));
+        bool d3d = mods.Contains("d3d11.dll");
+        bool warp = mods.Contains("d3d10warp.dll");      // Direct3D's software rasteriser (no graphics chip)
+        return angle ? (warp ? "ANGLE on Direct3D 11, software (WARP)" : d3d ? "ANGLE on Direct3D 11 (graphics chip)" : "ANGLE") : "software (Skia on the CPU)";
     }
 
     /// The display's refresh rate, from the typical gap between frames.

@@ -99,6 +99,20 @@ jobs:
           Write-Host "=== 150 %: defaults"
           Get-Content "$dir/summary.txt"
 
+      # A test build for trying on a real laptop: self-contained (nothing to install), plus the smoothness check.
+      - name: Test build (self-contained)
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          dotnet publish src/Notchyyyy/Notchyyyy.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o "$env:RUNNER_TEMP/testbuild/Notchyyyy"
+          Copy-Item ci/measure-smoothness.cmd "$env:RUNNER_TEMP/testbuild/Notchyyyy/"
+
+      - name: Upload test build
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Notchyyyy-windows-test-build
+          path: ${{ runner.temp }}/testbuild
+
       - name: Upload smoothness logs
         if: always()
         uses: actions/upload-artifact@v6
