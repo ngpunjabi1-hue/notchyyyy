@@ -27,6 +27,13 @@ public sealed class BlurSwap : Panel
 
     public void Show(Control view, double now, bool animate)
     {
+        // without animation, nothing else stays behind: whatever was showing goes at once (a view told to fade out
+        // here, while nothing drives the fade, stayed on screen under the new one — seen on Windows)
+        if (!animate)
+        {
+            foreach (var (other, _) in _items.Where(i => !ReferenceEquals(i.View, view)).ToList()) Children.Remove(other);
+            _items.RemoveAll(i => !ReferenceEquals(i.View, view));
+        }
         // a view that is still fading out comes back from where it is, instead of being added twice
         int back = _items.FindIndex(i => ReferenceEquals(i.View, view));
         if (back >= 0)

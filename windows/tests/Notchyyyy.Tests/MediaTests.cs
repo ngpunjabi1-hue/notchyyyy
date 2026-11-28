@@ -144,6 +144,33 @@ public class MediaTests
         Assert.True(Px.Dist(label, LT.AccentColor) < 90, $"accent label not at the record's centre: {label}");
     }
 
+    /// Something starts playing while Media isn't on screen: coming back shows the player alone (the empty state
+    /// used to stay drawn on top of it; seen on the Windows runner).
+    [AvaloniaFact]
+    public void TrackArrivingWhileAwayShowsOnlyThePlayer()
+    {
+        using var rig = new Rig(source: new NoMediaSource());
+        rig.Run(2.4);
+        Assert.False(rig.View.ShowingPlayer);
+        rig.M.Tab = Tab.Home;
+        rig.Run(3.2);
+        rig.M.Media.Start(new DemoMediaSource());
+        rig.WaitForArt();
+        rig.M.Tab = Tab.Media;
+        var bmp = rig.Run(4.2);
+        bmp.Save(Path.Combine(Out("media"), "arrived-while-away.png"), new PngBitmapEncoderOptions());
+        Assert.True(rig.View.ShowingPlayer);
+        var leftovers = rig.View.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Text == "Nothing playing").ToList();
+        Assert.Empty(leftovers);
+        // and switching tabs while the notch is closed leaves nothing behind either
+        rig.M.Expanded = false;
+        rig.Run(5.0);
+        rig.M.Tab = Tab.Home;
+        rig.M.Tab = Tab.Media;
+        Assert.Single(rig.Stage.Body.GetVisualDescendants().OfType<MediaView>());
+        Assert.Empty(rig.Stage.Body.GetVisualDescendants().OfType<HomeView>());
+    }
+
     /// Pausing: the button swaps to "play", the record tucks back behind the artwork, the art shrinks a little.
     [AvaloniaFact]
     public void PausingTucksTheRecordIn()

@@ -369,7 +369,7 @@ public static class WinSelfTest
                 await Wait(1.2);
                 var mv = sh.Stage.Body.CurrentMedia;
                 Check("opens on the Media tab, showing the player", mv is { ShowingPlayer: true });
-                Save(Capture(), Path.Combine(dir, $"{theme}-7-player-playing.png"));
+                Save(Capture(), Path.Combine(dir, $"{theme}-7-media-playing.png"));
                 if (mv is not null)
                 {
                     var pp = mv.Play.TranslatePoint(new Point(mv.Play.Bounds.Width / 2, mv.Play.Bounds.Height / 2), sh.Window)!.Value;
@@ -389,7 +389,7 @@ public static class WinSelfTest
                     Click();
                     for (int i = 0; i < 30 && !presses.Contains("Next"); i++) await Wait(0.1);
                     Check("clicking next reaches the playing app", presses.Contains("Next"), string.Join(",", presses));
-                    Save(Capture(), Path.Combine(dir, $"{theme}-8-player-paused.png"));
+                    Save(Capture(), Path.Combine(dir, $"{theme}-8-media-paused.png"));
                 }
                 // the app goes away: back to "Nothing playing"
                 smtc.IsEnabled = false;
