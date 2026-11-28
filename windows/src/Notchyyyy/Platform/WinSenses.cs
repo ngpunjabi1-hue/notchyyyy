@@ -14,7 +14,10 @@ namespace Notchyyyy.Platform;
 public sealed class WinSenses : ISenseSource
 {
     private int _downs;
-    private ushort _lastMake;
+    // the key last pressed and not yet released (virtual key and scan code together; −1 = none), only to tell a
+    // held key's repeats from new presses. Injected presses (the self-test's) carry no scan code, so the scan code
+    // alone, starting at 0, made them all look like repeats (seen on the Windows runner).
+    private int _held = -1;
     private readonly IntPtr _hwnd;
     private readonly WndProc _proc;   // kept alive: Windows calls it
 
@@ -58,8 +61,9 @@ public sealed class WinSenses : ISenseSource
                     {
                         var kb = Marshal.PtrToStructure<RAWKEYBOARD>(buf + (int)header);
                         bool up = (kb.Flags & 1) != 0;   // RI_KEY_BREAK
-                        if (up) { if (kb.MakeCode == _lastMake) _lastMake = 0; }
-                        else if (kb.MakeCode != _lastMake) { _lastMake = kb.MakeCode; Interlocked.Increment(ref _downs); }
+                        int key = kb.VKey << 16 | kb.MakeCode;
+                        if (up) { if (key == _held) _held = -1; }
+                        else if (key != _held) { _held = key; Interlocked.Increment(ref _downs); }
                     }
                 }
                 finally { Marshal.FreeHGlobal(buf); }
