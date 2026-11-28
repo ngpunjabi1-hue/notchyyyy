@@ -51,6 +51,17 @@ public sealed class TabPill : Control, Avalonia.Rendering.ICustomHitTest
 
     protected override Size MeasureOverride(Size availableSize) => new(TotalWidth, RowHeight);
 
+    /// The visible tabs changed (Settings › Tabs) or the theme did: re-read them and redraw.
+    public void Refresh(double now)
+    {
+        _tabs = _m.VisibleTabs;
+        _hover.Clear(); _hot = -1;
+        int i = Math.Max(0, IndexOf(_m.Tab));
+        _indicator.Snap(ButtonCentre(i));
+        InvalidateMeasure();
+        InvalidateVisual();
+    }
+
     public void Select(Tab tab, double now)
     {
         int i = IndexOf(tab);
@@ -91,6 +102,8 @@ public sealed class TabPill : Control, Avalonia.Rendering.ICustomHitTest
         if (_hot >= 0) Hover(_hot).AnimateTo(0, LT.Hover, now);
         _hot = i;
         if (_hot >= 0) Hover(_hot).AnimateTo(1, LT.Hover, now);
+        // the tab's name as a tooltip, like the Mac's .help()
+        ToolTip.SetTip(this, i < 0 ? null : i == _tabs.Count ? "Close" : _tabs[i].Title());
         Cursor = new Cursor(i >= 0 ? StandardCursorType.Hand : StandardCursorType.Arrow);
         _kick();
     }

@@ -16,9 +16,15 @@ using Xunit;
 
 namespace Notchyyyy.Tests;
 
+/// The same control theme as the app (Fluent), so standard controls (the name box) render as they do for real.
+public class TestApplication : Application
+{
+    public override void Initialize() => Styles.Add(new Avalonia.Themes.Fluent.FluentTheme());
+}
+
 public class TestApp
 {
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Application>()
+    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<TestApplication>()
         .UseSkia().WithInterFont()
         .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }

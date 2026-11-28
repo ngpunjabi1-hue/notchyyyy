@@ -81,7 +81,14 @@ public sealed class ExpandedBody : Grid
 
     // Home is made once and kept: building it again on every switch cost a visible stall (measured on Windows)
     private HomeView? _home;
-    private Control Content(Tab tab) => tab == Tab.Home ? (_home ??= new HomeView(_m, _clock)) : new TabPlaceholder(tab);
+    private Control Content(Tab tab) => tab switch
+    {
+        Tab.Home => _home ??= new HomeView(_m, _clock),
+        Tab.Settings => new SettingsView(_m, _clock),
+        _ => new TabPlaceholder(tab),
+    };
+
+    public SettingsView? CurrentSettings => _content.Current as SettingsView;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {
@@ -129,9 +136,9 @@ public sealed class ExpandedBody : Grid
         _content.Show(Content(tab), now, animate);
     }
 
-    public bool Animating(double now) => _title.Animating(now) || _content.Animating(now);
+    public bool Animating(double now) => _title.Animating(now) || _content.Animating(now) || (CurrentSettings?.Animating(now) ?? false);
 
-    public void Update(double now) { _title.Update(now); _content.Update(now); }
+    public void Update(double now) { _title.Update(now); _content.Update(now); CurrentSettings?.Update(now); }
 
     private static TextBlock Label(string s, Color c) => new()
     {

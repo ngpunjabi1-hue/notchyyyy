@@ -105,6 +105,7 @@ public sealed class HomeView : Canvas
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        Refresh();      // Home is reused: catch up on anything that changed while it was away (a new name, the hour)
         _timer ??= DispatcherTimer.Run(() => { Refresh(); return true; }, TimeSpan.FromSeconds(20));
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -156,8 +157,10 @@ public sealed class HomeView : Canvas
 }
 
 /// <summary>A small control that eases a 0…1 hover amount on the Mac's hover spring and redraws while it moves.</summary>
-public abstract class HoverControl : Control
+public abstract class HoverControl : Control, Avalonia.Rendering.ICustomHitTest
 {
+    public bool HitTest(Point p) => new Rect(Bounds.Size).Contains(p);
+
     protected readonly IClock Clock;
     private readonly SpringValue _hover = new(0, 0.002);
     private bool _ticking;

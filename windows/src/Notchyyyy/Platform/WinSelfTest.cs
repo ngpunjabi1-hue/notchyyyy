@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.VisualTree;
 using Notchyyyy.Notch;
 using Notchyyyy.Theme;
 
@@ -35,6 +36,18 @@ public static class WinSelfTest
         var down = new INPUT { type = 0, u = new INPUTUNION { mi = new MOUSEINPUT { dwFlags = 0x0002 } } };
         var up = new INPUT { type = 0, u = new INPUTUNION { mi = new MOUSEINPUT { dwFlags = 0x0004 } } };
         SendInput(2, new[] { down, up }, Marshal.SizeOf<INPUT>());
+    }
+
+    /// Types text as real Unicode key presses.
+    static void Type(string text)
+    {
+        var list = new List<INPUT>();
+        foreach (char ch in text)
+        {
+            list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { scan = ch, flags = 0x0004 } } });
+            list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { scan = ch, flags = 0x0004 | 0x0002 } } });
+        }
+        SendInput((uint)list.Count, list.ToArray(), Marshal.SizeOf<INPUT>());
     }
 
     /// Real key presses: each virtual key down in order, then all up in reverse.
@@ -279,6 +292,43 @@ public static class WinSelfTest
             Click();
             await Wait(0.4);
             Check("the close button closes", !sh.Model.Expanded);
+            SetCursorPos(away.X, away.Y);
+            await Wait(0.8);
+
+            // ---- step 5: Settings › About, typing your name with the real keyboard; launch at login ----
+            Notch.SettingsView.LastPage = Notch.SettingsPage.About;
+            sh.Model.Tab = Tab.Settings;
+            SetCursorPos(pill.X, pill.Y);
+            await Wait(0.9);
+            Check("re-opens on Settings", sh.Model.Expanded && sh.Model.Tab == Tab.Settings);
+            await Wait(0.5);
+            var box = sh.Stage.Body.CurrentSettings?.CurrentPage?.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
+            Check("About shows the name field", box is not null);
+            if (box is not null)
+            {
+                var bp = box.TranslatePoint(new Point(box.Bounds.Width / 2, box.Bounds.Height / 2), sh.Window)!.Value;
+                SetCursorPos(rc.L + Px(bp.X), rc.T + Px(bp.Y));
+                await Wait(0.2);
+                Click();
+                await Wait(0.4);
+                Check("clicking the field gives it the keyboard", box.IsFocused && GetForegroundWindow() == hwnd);
+                Keys(0x11, 0x41);           // Ctrl+A, then type over it
+                Type("Robin");
+                Keys(0x0D);                 // Enter
+                await Wait(0.4);
+                Check("typing a name and pressing Enter saves it", sh.Model.UserName == "Robin", $"name '{sh.Model.UserName}'");
+                Save(Capture(), Path.Combine(dir, $"{theme}-6-settings-about.png"));
+            }
+            Keys(0x1B);
+            await Wait(0.8);
+            bool wasOn = Startup.IsOn;
+            Startup.Set(true);
+            Check("launch at login: on adds Notchyyyy to Windows' startup list", Startup.IsOn);
+            using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
+                Check("launch at login: it starts this exe", (k?.GetValue("Notchyyyy") as string) == Startup.Command, $"{k?.GetValue("Notchyyyy")}");
+            Startup.Set(false);
+            Check("launch at login: off removes it", !Startup.IsOn);
+            if (wasOn) Startup.Set(true);
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

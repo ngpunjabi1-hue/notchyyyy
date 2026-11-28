@@ -31,7 +31,7 @@ public sealed class NotchStage : Panel
     private readonly CollapsedBar _barView;
     private readonly Sprout.SproutView _buddy;
     public Sprout.SproutView Buddy => _buddy;
-    private readonly ExpandedBody _bodyView;
+    private ExpandedBody _bodyView;
     // the tab bar under the open notch: arrives a beat after the shape (dropping 18 pt and pouring in on its
     // own springy curve), leaves with a quick fade
     private readonly TabPill _pill;
@@ -166,6 +166,43 @@ public sealed class NotchStage : Panel
                 Go(_activity, _m.Activity ? 1 : 0, LT.OpenWide, now);
                 break;
         }
+        Kick();
+    }
+
+    /// <summary>
+    /// Applies a settings change. Theme, accent and text or icon size change colours and sizes everywhere, so the open
+    /// body is rebuilt in place (Settings remembers its page); everything else applies in place without a rebuild, so
+    /// switches keep animating smoothly.
+    /// </summary>
+    public void ApplySetting(string name)
+    {
+        double now = _clock.Now;
+        switch (name)
+        {
+            case nameof(Prefs.Accent) or nameof(Prefs.Appearance) or nameof(Prefs.TextScale) or nameof(Prefs.IconScale):
+                _bodyHost.Children.Remove(_bodyView);
+                _bodyView = new ExpandedBody(_m, _clock);
+                _bodyHost.Children.Add(_bodyView);
+                _pill.Refresh(now);
+                break;
+            case nameof(Prefs.Buddy):
+                _buddy.IsVisible = Prefs.Shared.Buddy;
+                OnChanged("Activity");
+                break;
+            case nameof(Prefs.LiveActivity):
+                OnChanged("Activity");
+                break;
+            case nameof(Prefs.HiddenTabs):
+                _pill.Refresh(now);
+                InvalidateArrange();
+                break;
+            case nameof(Prefs.UserName):
+                _bodyView.CurrentHome?.Refresh();
+                break;
+        }
+        _shape.InvalidateVisual();
+        _barView.Refresh();
+        Update(now);
         Kick();
     }
 

@@ -221,4 +221,24 @@ public class HomeReuseTests
         Assert.True(home.Refreshing);
         win.Close();
     }
+
+    /// A name changed in Settings shows on Home straight away when you go back to it.
+    [AvaloniaFact]
+    public void ANewNameShowsWhenYouReturnHome()
+    {
+        var m = new NotchModel { UserName = "Alex" }; var clock = new ManualClock { Now = 1 };
+        m.Buddy.Hour = () => 9;                     // before Home is built
+        var stage = new NotchStage(m, clock) { Width = 820, Height = 430 };
+        var win = new Window { Width = 820, Height = 430, Content = stage };
+        win.Show();
+        void Run(double until) { for (double t = clock.Now; t <= until; t += 1 / 60.0) { clock.Now = t; stage.Update(t); Dispatcher.UIThread.RunJobs(); } }
+        clock.Now = 1.1; m.Expanded = true; Run(2.0);
+        string Greeting() => stage.Body.CurrentHome!.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text!.StartsWith("Good")).Text!;
+        Assert.Equal("Good morning, Alex", Greeting());
+        clock.Now = 2.0; m.Tab = Tab.Settings; Run(3.0);
+        m.UserName = "Robin";
+        clock.Now = 3.0; m.Tab = Tab.Home; Run(4.0);
+        Assert.Equal("Good morning, Robin", Greeting());
+        win.Close();
+    }
 }

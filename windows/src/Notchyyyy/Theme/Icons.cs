@@ -3,7 +3,8 @@ using Avalonia.Media;
 
 namespace Notchyyyy.Theme;
 
-public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note }
+public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note,
+    Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -174,6 +175,98 @@ public static class Icons
                 Stroke(flag);
                 break;
             }
+            case IconKind.Brush:        // a paintbrush: a tilted handle and a rounded tip
+            {
+                var handle = new RectangleGeometry(new Rect(10.6, 2.5, 2.8, 11.5), 1.4, 1.4)
+                    { Transform = new MatrixTransform(Matrix.CreateTranslation(-12, -12) * Matrix.CreateRotation(Math.PI / 5) * Matrix.CreateTranslation(13.5, 10.5) * m) };
+                ctx.DrawGeometry(fill, soft, handle);
+                var tip = new StreamGeometry();
+                using (var g = tip.Open())
+                {
+                    g.BeginFigure(new Point(8.4, 15.4), true);
+                    g.CubicBezierTo(new Point(10.6, 15.2), new Point(12.2, 17.2), new Point(11.4, 19.2));
+                    g.CubicBezierTo(new Point(10.4, 21.6), new Point(6.2, 22.2), new Point(3.6, 21.2));
+                    g.CubicBezierTo(new Point(5.4, 20), new Point(4.8, 17.2), new Point(6.2, 16.2));
+                    g.CubicBezierTo(new Point(6.8, 15.7), new Point(7.6, 15.4), new Point(8.4, 15.4));
+                    g.EndFigure(true);
+                }
+                Shape(tip);
+                break;
+            }
+            case IconKind.Pointer:      // an arrow pointer with two motion lines
+                Shape(Poly((9.5, 4), (19.5, 13.2), (14.6, 13.8), (17.4, 19.6), (15, 20.8), (12.2, 15), (9.5, 18.4)));
+                Stroke(Line((3.2, 9.5), (6.4, 9.5)));
+                Stroke(Line((2.6, 14.5), (6.2, 14.5)));
+                break;
+            case IconKind.Grid:         // three small tiles over a wide bar
+                foreach (var x in new[] { 3.0, 9.6, 16.2 }) Shape(new RectangleGeometry(new Rect(x, 4, 4.8, 5.6), 1.4, 1.4));
+                Shape(new RectangleGeometry(new Rect(3, 13.4, 18, 6.6), 1.8, 1.8));
+                break;
+            case IconKind.Info:
+                ctx.DrawEllipse(null, line, m.Transform(new Point(12, 12)), 8.8 * k, 8.8 * k);
+                Dot(new Point(12, 7.8), 1.4);
+                Stroke(Line((12, 11), (12, 16.6)));
+                break;
+            case IconKind.Minus:
+                Stroke(Line((6, 12), (18, 12)));
+                break;
+            case IconKind.Plus:
+                Stroke(Line((6, 12), (18, 12)));
+                Stroke(Line((12, 6), (12, 18)));
+                break;
+            case IconKind.Power:
+            {
+                var arc = new StreamGeometry();
+                using (var g = arc.Open())
+                {
+                    g.BeginFigure(Polar(12, 12.8, 7.6, 125), false);
+                    g.ArcTo(Polar(12, 12.8, 7.6, 55), new Size(7.6, 7.6), 0, true, SweepDirection.CounterClockwise);
+                    g.EndFigure(false);
+                }
+                Stroke(arc);
+                Stroke(Line((12, 3.4), (12, 11.4)));
+                break;
+            }
+            case IconKind.Reset:        // an arrow going round anticlockwise
+            {
+                var arc = new StreamGeometry();
+                using (var g = arc.Open())
+                {
+                    g.BeginFigure(Polar(12, 12, 7.6, 150), false);
+                    g.ArcTo(Polar(12, 12, 7.6, 200), new Size(7.6, 7.6), 0, true, SweepDirection.Clockwise);
+                    g.EndFigure(false);
+                }
+                Stroke(arc);
+                var head = Polar(12, 12, 7.6, 150);
+                Stroke(Line((head.X - 0.6, head.Y - 4.4), (head.X, head.Y), (head.X + 4.2, head.Y - 1.4)));
+                break;
+            }
+            case IconKind.Sparkle:      // a four-pointed star and a little one
+            {
+                StreamGeometry Star(double cx, double cy, double r)
+                {
+                    var g = new StreamGeometry();
+                    using var c = g.Open();
+                    c.BeginFigure(new Point(cx, cy - r), true);
+                    c.QuadraticBezierTo(new Point(cx, cy), new Point(cx + r, cy));
+                    c.QuadraticBezierTo(new Point(cx, cy), new Point(cx, cy + r));
+                    c.QuadraticBezierTo(new Point(cx, cy), new Point(cx - r, cy));
+                    c.QuadraticBezierTo(new Point(cx, cy), new Point(cx, cy - r));
+                    c.EndFigure(true);
+                    return g;
+                }
+                Shape(Star(10.5, 13, 8));
+                Shape(Star(18.6, 5.6, 3.4));
+                break;
+            }
+            case IconKind.Download:     // an arrow into a ring
+                ctx.DrawEllipse(null, line, m.Transform(new Point(12, 12)), 8.8 * k, 8.8 * k);
+                Stroke(Line((12, 7), (12, 16)));
+                Stroke(Line((8.4, 12.6), (12, 16.2), (15.6, 12.6)));
+                break;
+            case IconKind.AppSquare:
+                Shape(new RectangleGeometry(new Rect(4, 4, 16, 16), 4.4, 4.4));
+                break;
             case IconKind.More:
                 foreach (var x in new[] { 5.5, 12, 18.5 }) Dot(new Point(x, 12), 2);
                 break;

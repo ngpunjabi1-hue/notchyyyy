@@ -81,6 +81,13 @@ public sealed class Shell
         };
 
         Stage.Pill.Close = Tracker.Collapse;
+        Prefs.Shared.Changed += name =>
+        {
+            if (name == nameof(Prefs.Appearance) && Application.Current is { } app)
+                app.RequestedThemeVariant = LT.Light ? ThemeVariant.Light : ThemeVariant.Dark;
+            if (name == nameof(Prefs.UserName)) Model.UserName = Prefs.Shared.UserName;
+            Stage.ApplySetting(name);
+        };
         // Screenshot / Record on Home: close the notch so it isn't in the shot, then open Windows' own Snipping Tool
         HomeView.Capture = video =>
         {
