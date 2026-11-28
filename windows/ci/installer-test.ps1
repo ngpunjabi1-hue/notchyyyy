@@ -86,6 +86,7 @@ Get-Process Notchyyyy -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 1
 
 # ---- 3. uninstall: the app goes, your data stays ----
+if (-not (Test-Path $runKey)) { New-Item -Path $runKey -Force | Out-Null }   # not on every machine (the app creates it too)
 New-ItemProperty -Path $runKey -Name Notchyyyy -Value "`"$current`"" -PropertyType String -Force | Out-Null   # as if Launch at login were on
 $u = Start-Process -FilePath (Join-Path $root 'Update.exe') -ArgumentList 'uninstall', '--silent', '--log', (Join-Path $Out 'uninstall.log') -Wait -PassThru
 Check 'uninstall finishes quietly' ($u.ExitCode -eq 0) "exit code $($u.ExitCode)"
