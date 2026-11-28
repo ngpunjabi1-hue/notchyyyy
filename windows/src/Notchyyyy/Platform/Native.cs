@@ -80,6 +80,27 @@ public static class Overlay
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] private static extern IntPtr SetWindowLongPtr(IntPtr h, int i, IntPtr v);
     [DllImport("user32.dll")] private static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr h);
+
+    private static IntPtr _previous;
+
+    /// Remembers the app the user was in when the notch opened (it opens on hover, without taking the keyboard).
+    public static void RememberForeground(Window w)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var fg = GetForegroundWindow();
+        if (fg != IntPtr.Zero && fg != Hwnd(w)) _previous = fg;
+    }
+
+    /// After a click inside, the notch has the keyboard; once it has closed, hand it back to that app,
+    /// so typing never goes to the invisible overlay.
+    public static void ReturnForeground(Window w)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        if (GetForegroundWindow() == Hwnd(w) && _previous != IntPtr.Zero && IsWindow(_previous)) SetForegroundWindow(_previous);
+    }
 
     private static IntPtr Hwnd(Window w) => w.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 

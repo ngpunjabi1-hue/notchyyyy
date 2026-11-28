@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Notchyyyy.Notch;
 using Notchyyyy.Theme;
 
 namespace Notchyyyy.Platform;
@@ -21,6 +22,29 @@ public static class WinSelfTest
     struct BITMAPINFOHEADER { public int Size, Width, Height; public short Planes, BitCount; public int Compression, SizeImage, XPels, YPels, ClrUsed, ClrImportant; }
 
     [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint n, INPUT[] inputs, int size);
+    [StructLayout(LayoutKind.Sequential)] struct MOUSEINPUT { public int dx, dy; public uint mouseData, dwFlags, time; public IntPtr extra; }
+    [StructLayout(LayoutKind.Sequential)] struct KEYBDINPUT { public ushort vk, scan; public uint flags, time; public IntPtr extra; }
+    [StructLayout(LayoutKind.Explicit)] struct INPUTUNION { [FieldOffset(0)] public MOUSEINPUT mi; [FieldOffset(0)] public KEYBDINPUT ki; }
+    [StructLayout(LayoutKind.Sequential)] struct INPUT { public uint type; public INPUTUNION u; }
+
+    /// A real left click where the cursor is (goes through Windows' input queue like a trackpad click).
+    static void Click()
+    {
+        var down = new INPUT { type = 0, u = new INPUTUNION { mi = new MOUSEINPUT { dwFlags = 0x0002 } } };
+        var up = new INPUT { type = 0, u = new INPUTUNION { mi = new MOUSEINPUT { dwFlags = 0x0004 } } };
+        SendInput(2, new[] { down, up }, Marshal.SizeOf<INPUT>());
+    }
+
+    /// Real key presses: each virtual key down in order, then all up in reverse.
+    static void Keys(params ushort[] vks)
+    {
+        var list = new List<INPUT>();
+        foreach (var vk in vks) list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { vk = vk } } });
+        foreach (var vk in vks.Reverse()) list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { vk = vk, flags = 0x0002 } } });
+        SendInput((uint)list.Count, list.ToArray(), Marshal.SizeOf<INPUT>());
+    }
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
     [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT p);
     [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr h, uint flags);
@@ -196,6 +220,54 @@ public static class WinSelfTest
             SetCursorPos(cx + Px(152), rc.T + Px(10));
             await Wait(0.5);
             Check("and stops before 152 pt (zone is ±146)", !sh.Model.Hovering && !sh.Model.Expanded);
+            SetCursorPos(away.X, away.Y);
+            await Wait(1.0);
+
+            // ---- step 3: the tab bar with the real mouse and keyboard ----
+            var before = GetForegroundWindow();
+            Log($"INFO foreground before opening: {before}");
+            SetCursorPos(pill.X, pill.Y);
+            await Wait(0.8);
+            Check("re-opens on hover", sh.Model.Expanded);
+            await Wait(0.4);
+            var st = sh.Stage;
+            POINT Btn(double cxDip) => new() { X = rc.L + Px(st.PillRect.X + cxDip), Y = rc.T + Px(st.PillRect.Y + TabPill.RowHeight / 2) };
+            var tabs = st.Pill.Tabs;
+            var media = Btn(st.Pill.ButtonCentre(1));
+            SetCursorPos(media.X, media.Y);
+            await Wait(0.3);
+            Check("the cursor on the tab bar keeps the notch open", sh.Model.Expanded);
+            Click();
+            await Wait(0.6);
+            Check("clicking a tab selects it", sh.Model.Tab == tabs[1], $"tab {sh.Model.Tab}");
+            Check("a click inside gives the notch the keyboard", GetForegroundWindow() == hwnd);
+            var mediaShot = Capture(); Save(mediaShot, Path.Combine(dir, $"{theme}-4-tab-media.png"));
+            Keys(0x11, 0x33);   // Ctrl+3
+            await Wait(0.6);
+            Check("Ctrl+3 switches to the third tab", sh.Model.Tab == tabs[2], $"tab {sh.Model.Tab}");
+            var sel = Btn(st.Pill.ButtonCentre(7));
+            SetCursorPos(sel.X, sel.Y);
+            await Wait(0.2);
+            Click();
+            await Wait(0.6);
+            Check("clicking the last tab selects it", sh.Model.Tab == tabs[7], $"tab {sh.Model.Tab}");
+            var lastShot = Capture(); Save(lastShot, Path.Combine(dir, $"{theme}-5-tab-settings.png"));
+            Keys(0x1B);         // Esc
+            await Wait(0.3);
+            Check("Esc closes", !sh.Model.Expanded);
+            await Wait(0.6);
+            Check("after closing, the keyboard goes back to the app you were in", GetForegroundWindow() == before, $"foreground {GetForegroundWindow()}, expected {before}");
+            // the close button
+            SetCursorPos(away.X, away.Y);
+            await Wait(0.6);
+            SetCursorPos(pill.X, pill.Y);
+            await Wait(0.8);
+            var close = Btn(st.Pill.CloseCentre);
+            SetCursorPos(close.X, close.Y);
+            await Wait(0.3);
+            Click();
+            await Wait(0.4);
+            Check("the close button closes", !sh.Model.Expanded);
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

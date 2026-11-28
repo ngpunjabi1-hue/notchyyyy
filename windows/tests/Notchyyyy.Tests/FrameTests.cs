@@ -97,8 +97,14 @@ public class FrameTests
         double L = double.NaN, R = double.NaN, B = double.NaN;
         for (int x = 0; x < Cx; x++) if (C(x, row) > 0.01) { L = x + 1 - C(x, row); break; }
         for (int x = pw - 1; x > Cx; x--) if (C(x, row) > 0.01) { R = x + C(x, row); break; }
-        int col = (int)Cx + 40;
-        for (int y = ph - 1; y >= 0; y--) if (C(col, y) > 0.01) { B = y + C(col, y); break; }
+        // the bottom edge, scanning up from below; open, at a column clear of the tab bar (±182 pt)
+        // on the straight part of the bottom edge; open, at a column clear of the tab bar (±182 pt)
+        int col = (int)Cx + (w / 2 - top - bot > 262 ? 250 : 40);
+        var pill = s.PillOpacity > 0.001 ? s.PillRect.Inflate(2) : default;
+        int startY = ph - 1;
+        if (pill.Width > 0 && col >= pill.Left && col <= pill.Right) startY = (int)Math.Floor(pill.Top) - 1;   // look above the bar
+        if (expB >= startY - 1) B = expB;            // the bar covers this column's edge right now: nothing to measure
+        else for (int y = startY; y >= 0; y--) if (C(col, y) > 0.01) { B = y + C(col, y); break; }
 
         // leaks: anything not backdrop strictly outside the shape
         int leaks = 0;
@@ -108,7 +114,7 @@ public class FrameTests
             bool below = y >= Math.Ceiling(expB) + 1;
             bool beside = y > top + 1 && y < h - bot - 1 && (x < Math.Floor(expL) - 1 || x > Math.Ceiling(expR) + 1);
             bool outsideFlare = y >= 1 && y < h - 1 && (x < Cx - w / 2 - 1 || x > Cx + w / 2 + 1);
-            if ((below || beside || outsideFlare) && !IsBackdrop(x, y)) leaks++;
+            if ((below || beside || outsideFlare) && !IsBackdrop(x, y) && !pill.Contains(new Point(x + 0.5, y + 0.5))) leaks++;
         }
 
         // ghosts: the header's "Notchyyyy / Home" still drawn after closing has had 0.125 s

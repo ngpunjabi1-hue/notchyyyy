@@ -9,30 +9,69 @@ using Notchyyyy.Theme;
 namespace Notchyyyy.Notch;
 
 /// <summary>
+/// Swaps one child for another in place with the Mac app's "blurFade": the outgoing view blurs and fades out
+/// while the incoming one sharpens and fades in, both on the snappy spring, on top of each other (nothing
+/// slides in from a side, so nothing shifts).
+/// </summary>
+public sealed class BlurSwap : Panel
+{
+    private readonly List<(Control View, SpringValue Amount)> _items = new();
+
+    public Control? Current => _items.Count > 0 ? _items[^1].View : null;
+
+    public void Show(Control view, double now, bool animate)
+    {
+        foreach (var (_, a) in _items) a.AnimateTo(1, LT.Snappy, now);   // everything already here leaves
+        var amount = new SpringValue(animate ? 1 : 0, 0.002);
+        if (animate) amount.AnimateTo(0, LT.Snappy, now);
+        _items.Add((view, amount));
+        Children.Add(view);
+        Update(now);
+    }
+
+    public bool Animating(double now) => _items.Any(i => !i.Amount.IsSettled(now));
+
+    public void Update(double now)
+    {
+        for (int i = _items.Count - 1; i >= 0; i--)
+        {
+            var (view, amount) = _items[i];
+            double a = Math.Clamp(amount.Value(now), 0, 1);
+            bool leaving = i < _items.Count - 1;
+            if (leaving && a >= 0.999 && amount.IsSettled(now))
+            {
+                Children.Remove(view);
+                _items.RemoveAt(i);
+                continue;
+            }
+            view.Opacity = 1 - a;
+            view.Effect = a > 0.01 ? new BlurEffect { Radius = a * 8 } : null;
+        }
+    }
+}
+
+/// <summary>
 /// The open notch: a header row ("Notchyyyy / Home" on the left, the time and the menu on the right)
-/// and the tab's content below it. The tabs arrive in later steps.
+/// and the tab's content below it.
 /// </summary>
 public sealed class ExpandedBody : Grid
 {
     private readonly TextBlock _time;
+    private readonly BlurSwap _title = new();
+    private readonly BlurSwap _content = new();
+    private readonly NotchModel _m;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {
+        _m = m;
         Width = m.BodySize.Width; Height = m.BodySize.Height;
-        Margin = new Thickness(0);
         RowDefinitions = new RowDefinitions($"{m.NotchSize.Height},*");
 
-        TextBlock T(string s, Color c) => new()
-        {
-            Text = s, Foreground = new SolidColorBrush(c), FontFamily = LT.Ui,
-            FontSize = LT.TextSize(12), FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center,
-        };
         var crumbs = new StackPanel
         {
             Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
-            Children = { T("Notchyyyy", LT.Faint), T("/", LT.Faint), T("Home", LT.Text) },
+            Children = { Label("Notchyyyy", LT.Faint), Label("/", LT.Faint), _title },
         };
-
         _time = new TextBlock
         {
             FontFamily = LT.Mono, FontSize = LT.TextSize(11), Foreground = new SolidColorBrush(LT.Muted),
@@ -42,39 +81,74 @@ public sealed class ExpandedBody : Grid
         {
             Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { _time, new Dots { Width = 22, Height = 18 } },
+            Children = { _time, new IconView(IconKind.More, 13, LT.Muted) { Width = 22, Height = 18 } },
         };
+        Children.Add(new Grid { Margin = new Thickness(14 + 18, 0), Children = { crumbs, right } });
 
-        var header = new Grid { Margin = new Thickness(14 + 18, 0), Children = { crumbs, right } };
-        Children.Add(header);
+        var host = new Border { Margin = new Thickness(14 + 24, 14, 14 + 24, 24), Child = _content };
+        SetRow(host, 1);
+        Children.Add(host);
 
-        var content = new Border
-        {
-            Margin = new Thickness(14 + 24, 14, 14 + 24, 24),
-            Child = new TextBlock
-            {
-                Text = "Tabs arrive in the next steps.", FontFamily = LT.Ui, FontSize = LT.TextSize(12),
-                Foreground = new SolidColorBrush(LT.Faint), HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-        };
-        SetRow(content, 1);
-        Children.Add(content);
-
+        Showing = m.Tab;
+        _title.Show(Label(m.Tab.Title(), LT.Text), clock.Now, animate: false);
+        _content.Show(new TabPlaceholder(m.Tab), clock.Now, animate: false);
         UpdateTime();
         DispatcherTimer.Run(() => { UpdateTime(); return true; }, TimeSpan.FromSeconds(15));
     }
 
-    private void UpdateTime() => _time.Text = DateTime.Now.ToString("HH:mm");
+    public Tab Showing { get; private set; }
 
-    /// The "more" menu glyph: three dots.
-    private sealed class Dots : Control
+    /// Cross-fades the header title and the content to <paramref name="tab"/>.
+    public void SwitchTo(Tab tab, double now, bool animate = true)
     {
-        public override void Render(DrawingContext ctx)
+        if (tab == Showing) return;
+        Showing = tab;
+        _title.Show(Label(tab.Title(), LT.Text), now, animate);
+        _content.Show(new TabPlaceholder(tab), now, animate);
+    }
+
+    public bool Animating(double now) => _title.Animating(now) || _content.Animating(now);
+
+    public void Update(double now) { _title.Update(now); _content.Update(now); }
+
+    private static TextBlock Label(string s, Color c) => new()
+    {
+        Text = s, Foreground = new SolidColorBrush(c), FontFamily = LT.Ui,
+        FontSize = LT.TextSize(12), FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    private void UpdateTime() => _time.Text = DateTime.Now.ToString("HH:mm");
+}
+
+/// Draws one icon centred in its bounds.
+public sealed class IconView : Control
+{
+    private readonly IconKind _kind;
+    private readonly double _size;
+    public Color Color { get; set; }
+    public IconView(IconKind kind, double size, Color color) { _kind = kind; _size = size; Color = color; }
+    public override void Render(DrawingContext ctx) =>
+        Icons.Draw(ctx, _kind, new Point(Bounds.Width / 2, Bounds.Height / 2), _size, Color);
+}
+
+/// Until a tab is built, a quiet empty state like the Mac app's EmptyNote: a glyph and two lines.
+public sealed class TabPlaceholder : StackPanel
+{
+    public TabPlaceholder(Tab tab)
+    {
+        Spacing = 6;
+        HorizontalAlignment = HorizontalAlignment.Center;
+        VerticalAlignment = VerticalAlignment.Center;
+        Children.Add(new IconView(tab.Icon(), 22, LT.Faint) { Width = 26, Height = 26, HorizontalAlignment = HorizontalAlignment.Center });
+        Children.Add(new TextBlock
         {
-            var b = new SolidColorBrush(LT.Muted);
-            double cy = Bounds.Height / 2, cx = Bounds.Width / 2;
-            for (int i = -1; i <= 1; i++) ctx.DrawEllipse(b, null, new Point(cx + i * 4.2, cy), 1.4, 1.4);
-        }
+            Text = tab.Title(), FontFamily = LT.Ui, FontSize = LT.TextSize(12), FontWeight = FontWeight.Medium,
+            Foreground = new SolidColorBrush(LT.Muted), HorizontalAlignment = HorizontalAlignment.Center,
+        });
+        Children.Add(new TextBlock
+        {
+            Text = $"Arrives in step {tab.Step()}", FontFamily = LT.Ui, FontSize = LT.TextSize(11),
+            Foreground = new SolidColorBrush(LT.Faint), HorizontalAlignment = HorizontalAlignment.Center,
+        });
     }
 }

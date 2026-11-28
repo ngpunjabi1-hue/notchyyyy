@@ -71,9 +71,17 @@ public sealed class Shell
         TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);
         Tracker = new HoverTracker(Model, Clock);
         Window = _preview ? MakePreview() : MakeOverlay();
-        Tracker.SetInteractive = on => { if (!_preview) Overlay.SetClickThrough(Window, !on); };
+        Tracker.SetInteractive = on =>
+        {
+            if (_preview) return;
+            Overlay.SetClickThrough(Window, !on);
+            if (on) Overlay.RememberForeground(Window);
+            // once the close has finished (re-activating mid-animation caused ghosting on the Mac)
+            else DispatcherTimer.RunOnce(() => { if (!Model.Expanded) Overlay.ReturnForeground(Window); }, TimeSpan.FromSeconds(0.45));
+        };
 
-        Window.KeyDown += (_, e) => { if (e.Key == Avalonia.Input.Key.Escape && Model.Expanded) Tracker.Collapse(); };
+        Stage.Pill.Close = Tracker.Collapse;
+        Window.KeyDown += (_, e) => { if (NotchKeys.Handle(Model, Tracker.Collapse, e.Key, e.KeyModifiers)) e.Handled = true; };
         Window.Opened += (_, _) =>
         {
             DispatcherTimer.Run(() =>

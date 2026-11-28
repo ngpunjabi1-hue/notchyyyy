@@ -3,12 +3,55 @@ using Notchyyyy.Theme;
 
 namespace Notchyyyy.Notch;
 
+/// The tabs, in the Mac app's order. Agent, Notes and Play arrive in release 2.
+public enum Tab { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings }
+
+public static class TabInfo
+{
+    public static string Title(this Tab t) => t switch
+    {
+        Tab.Media => "Media", Tab.Today => "Today", Tab.Apps => "Apps", Tab.Clipboard => "Clipboard",
+        Tab.Stopwatch => "Stopwatch", Tab.System => "System", Tab.Settings => "Settings", _ => "Home",
+    };
+    /// The Mac app's saved names (Settings › Tabs keeps hidden tabs by these).
+    public static string Key(this Tab t) => t switch
+    {
+        Tab.Media => "music", Tab.Clipboard => "clip", _ => t.ToString().ToLowerInvariant(),
+    };
+    public static IconKind Icon(this Tab t) => t switch
+    {
+        Tab.Media => IconKind.Media, Tab.Today => IconKind.Today, Tab.Apps => IconKind.Apps, Tab.Clipboard => IconKind.Clipboard,
+        Tab.Stopwatch => IconKind.Stopwatch, Tab.System => IconKind.System, Tab.Settings => IconKind.Settings, _ => IconKind.Home,
+    };
+    /// Home and Settings can't be hidden; everything else can.
+    public static bool Hideable(this Tab t) => t != Tab.Home && t != Tab.Settings;
+    /// Which plan step fills the tab in (shown until then).
+    public static int Step(this Tab t) => t switch
+    {
+        Tab.Home => 4, Tab.Settings => 5, Tab.Media => 6, Tab.Clipboard => 7, Tab.Apps => 8,
+        Tab.Today or Tab.Stopwatch => 9, _ => 10,
+    };
+}
+
 /// The state the notch is drawn from. Views listen to <see cref="Changed"/>.
 public sealed class NotchModel
 {
     public event Action<string>? Changed;
 
     private bool _expanded, _hovering, _musicPlaying;
+    private Tab _tab = Tab.Home;
+
+    public Tab Tab
+    {
+        get => _tab;
+        set { if (_tab == value) return; _tab = value; Changed?.Invoke(nameof(Tab)); }
+    }
+
+    public IReadOnlyList<Tab> VisibleTabs =>
+        Enum.GetValues<Tab>().Where(t => !t.Hideable() || !Prefs.Shared.HiddenTabs.Contains(t.Key())).ToList();
+
+    /// Finished the first-run setup (onboarding arrives in plan step 11; until then, always).
+    public bool Onboarded => true;
 
     public bool Expanded { get => _expanded; set => Set(ref _expanded, value, nameof(Expanded)); }
     public bool Hovering { get => _hovering; set => Set(ref _hovering, value, nameof(Hovering)); }

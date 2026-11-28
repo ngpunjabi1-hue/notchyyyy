@@ -30,6 +30,11 @@ public sealed class NotchStage : Panel
     private readonly Panel _bodyHost = new() { ClipToBounds = false };
     private readonly CollapsedBar _barView;
     private readonly ExpandedBody _bodyView;
+    // the tab bar under the open notch: arrives a beat after the shape (dropping 18 pt and pouring in on its
+    // own springy curve), leaves with a quick fade
+    private readonly TabPill _pill;
+    private readonly SpringValue _pillIn = new(1, 0.002);
+    private readonly TweenValue _pillFade = new(0);
 
     private bool _frameRequested;
 
@@ -47,6 +52,7 @@ public sealed class NotchStage : Panel
 
         _barView = new CollapsedBar(model, clock);
         _bodyView = new ExpandedBody(model, clock);
+        _pill = new TabPill(model, clock, () => Kick()) { Opacity = 0, IsHitTestVisible = false };
         _barHost.Children.Add(_barView);
         _bodyHost.Children.Add(_bodyView);
         // Hosts are never hidden with IsVisible: switching that back on re-lays-out the whole body at the
@@ -56,6 +62,7 @@ public sealed class NotchStage : Panel
         Children.Add(_shape);
         Children.Add(_barHost);
         Children.Add(_bodyHost);
+        Children.Add(_pill);
 
         _m.Changed += OnChanged;
         Update(clock.Now);
@@ -68,11 +75,18 @@ public sealed class NotchStage : Panel
     public double CurrentBottom => CurBottom;
     public Color CurrentFill => Lerp(Colors.Black, LT.Bg, Math.Clamp(_fill.Value(_now), 0, 1));
     public double CurrentPour => Math.Clamp(_pour.Value(_now), 0, 1);
+    public TabPill Pill => _pill;
+    public ExpandedBody Body => _bodyView;
+    /// Where the tab bar is drawn this frame (stage coordinates, after its arrival offset), and how opaque.
+    public Rect PillRect { get; private set; }
+    public double PillOpacity => _pill.Opacity;
+
 
     /// True while anything is still moving.
     public bool Animating(double now) =>
         !(_w.IsSettled(now) && _h.IsSettled(now) && _top.IsSettled(now) && _bottom.IsSettled(now) && _fill.IsSettled(now)
-          && _stroke.IsSettled(now) && _activity.IsSettled(now) && _bar.IsSettled(now) && _pour.IsSettled(now));
+          && _stroke.IsSettled(now) && _activity.IsSettled(now) && _bar.IsSettled(now) && _pour.IsSettled(now)
+          && _pillIn.IsSettled(now) && _pillFade.IsSettled(now) && !_pill.Animating(now) && !_bodyView.Animating(now));
 
     private void Go(SpringValue s, double target, SpringSpec spec, double now)
     {
@@ -106,6 +120,12 @@ public sealed class NotchStage : Panel
                     if (!_bodyShown) _pour.Snap(1);
                     _pour.AnimateTo(0, 0.32, Ease.Out, now, 0.1);
                     _bar.AnimateTo(0, 0.10, Ease.Out, now);   // gone by the time the body starts to arrive
+                    if (_m.Onboarded)
+                    {
+                        if (_pill.Opacity < 0.001) _pillIn.Snap(1);
+                        _pillIn.AnimateTo(0, new SpringSpec(0.45, 0.2, 0.14), now);
+                        _pillFade.Snap(1);
+                    }
                 }
                 else
                 {
@@ -114,12 +134,18 @@ public sealed class NotchStage : Panel
                     // the pill's own content waits until the body's header has all but gone, so the two
                     // never sit on screen together (a clean hand-off rather than a cross-fade)
                     _bar.AnimateTo(1, 0.18, Ease.Out, now, 0.12);   // starts as the body finishes leaving (0.12 s)
+                    _pillFade.AnimateTo(0, 0.10, Ease.In, now);
                 }
+                _pill.IsHitTestVisible = e;
                 break;
             case nameof(NotchModel.Hovering):
                 Go(_w, w, LT.Hover, now);
                 Go(_h, h, LT.Hover, now);
                 Go(_bottom, b, LT.Hover, now);
+                break;
+            case nameof(NotchModel.Tab):
+                _bodyView.SwitchTo(_m.Tab, now, animate: _bodyShown);
+                _pill.Select(_m.Tab, now);
                 break;
             default:   // live activity came or went
                 Go(_w, w, LT.OpenWide, now);
@@ -212,6 +238,8 @@ public sealed class NotchStage : Panel
         _barHost.IsHitTestVisible = _barShown;
         _barView.Live = _barShown;
 
+        UpdatePill(now);
+        _bodyView.Update(now);
         UpdateClips();
         _shape.InvalidateVisual();
         FrameRendered?.Invoke(now, CurrentWidth, CurrentHeight, System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
@@ -235,6 +263,25 @@ public sealed class NotchStage : Panel
             Matrix.CreateTranslation(-half, 0) * Matrix.CreateScale(s, s) * Matrix.CreateTranslation(half, -pour * 10));
     }
 
+    /// The tab bar's resting place: centred, 10 pt below the open body (it doesn't ride the body's spring:
+    /// like the Mac's VStack, it's laid out at the open size at once and animates on its own).
+    private Rect PillHomeIn(double stageWidth) =>
+        new((stageWidth - _pill.TotalWidth) / 2, _m.BodySize.Height + _m.PillGap, _pill.TotalWidth, TabPill.RowHeight);
+
+    private void UpdatePill(double now)
+    {
+        // Pour (fade, settle from 96 %, drop 10 pt) combined with an 18 pt drop, on one springy amount
+        double a = _pillIn.Value(now);
+        double opacity = Math.Clamp(1 - a, 0, 1) * Math.Clamp(_pillFade.Value(now), 0, 1);
+        _pill.Opacity = opacity;
+        double s = 1 - 0.04 * a, half = _pill.TotalWidth / 2, dy = -28 * a;
+        _pill.RenderTransformOrigin = RelativePoint.TopLeft;
+        _pill.RenderTransform = new MatrixTransform(Matrix.CreateTranslation(-half, 0) * Matrix.CreateScale(s, s) * Matrix.CreateTranslation(half, dy));
+        var home = PillHomeIn(Bounds.Width);
+        PillRect = new Rect(home.X + half * (1 - s), home.Y + dy, home.Width * s, home.Height * s);
+        _pill.Update(now);
+    }
+
     private Rect ShapeRect => new((Bounds.Width - CurrentWidth) / 2, 0, CurrentWidth, CurrentHeight);
     // everything drawn in one frame reads the same instant, so the clip and the fill never disagree
     private double _now;
@@ -254,6 +301,7 @@ public sealed class NotchStage : Panel
         _shape.Measure(availableSize);
         _barHost.Measure(new Size(BarWidth, _m.NotchSize.Height));
         _bodyHost.Measure(_m.BodySize);
+        _pill.Measure(availableSize);
         return availableSize;
     }
 
@@ -265,6 +313,7 @@ public sealed class NotchStage : Panel
         _shape.Arrange(new Rect(finalSize));
         _barHost.Arrange(new Rect(cx - BarWidth / 2, 0, BarWidth, _m.NotchSize.Height));
         _bodyHost.Arrange(new Rect(cx - _m.BodySize.Width / 2, 0, _m.BodySize.Width, _m.BodySize.Height));
+        _pill.Arrange(PillHomeIn(finalSize.Width));   // finalSize: Bounds isn't updated yet during arrange
         UpdateClips();
         return finalSize;
     }
