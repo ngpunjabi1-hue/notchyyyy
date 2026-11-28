@@ -287,13 +287,17 @@ public sealed class StepButton : SpringControl
 /// The Mac's PillButton: a small rounded button with an icon and a title, brighter on hover; greyed out when disabled.
 public sealed class PillButton : SpringControl
 {
-    private readonly IconKind? _icon;
-    private readonly string _title;
+    private IconKind? _icon;
+    private string _title;
     private readonly SpringValue _hover;
     public Action? Action { get; set; }
     public bool Enabled { get; set; } = true;
     /// The Mac's prominent PillButton: filled with the accent, white text.
-    public bool Prominent { get; set; }
+    public bool Prominent { get => _prominent; set { _prominent = value; InvalidateVisual(); } }
+    private bool _prominent;
+    public string Title => _title;
+    /// Changes what it says (Edit ⇄ Done).
+    public void SetTitle(string title, IconKind? icon) { _title = title; _icon = icon; InvalidateMeasure(); InvalidateVisual(); }
     public PillButton(IClock clock, string title, IconKind? icon, Action? action) : base(clock)
     {
         _title = title; _icon = icon; Action = action; _hover = Spring(0);
@@ -331,5 +335,31 @@ public sealed class PillButton : SpringControl
         if (_icon is { } icon) { Icons.Draw(ctx, icon, new Point(x + 5.5, 13), 13 * Prefs.Shared.IconScale, c); x += 15; }
         var t = Text(_title, 11, c, FontWeight.Medium);
         ctx.DrawText(t, new Point(x, 13 - t.Height / 2));
+    }
+}
+
+/// Text fields in Linear's quiet style, not Fluent's: the card surface and hairline at rest, a touch brighter on
+/// hover, a thin accent edge while typing.
+public static class Fields
+{
+    public static TextBox Quiet(TextBox t)
+    {
+        var res = t.Resources;
+        res["TextControlBackground"] = new SolidColorBrush(LT.Surface);
+        res["TextControlBackgroundPointerOver"] = new SolidColorBrush(LT.SurfaceHi);
+        res["TextControlBackgroundFocused"] = new SolidColorBrush(LT.Surface);
+        res["TextControlBorderBrush"] = new SolidColorBrush(LT.Border);
+        res["TextControlBorderBrushPointerOver"] = new SolidColorBrush(LT.BorderHi);
+        res["TextControlBorderBrushFocused"] = new SolidColorBrush(LT.AccentColor);
+        res["TextControlForeground"] = new SolidColorBrush(LT.Text);
+        res["TextControlForegroundPointerOver"] = new SolidColorBrush(LT.Text);
+        res["TextControlForegroundFocused"] = new SolidColorBrush(LT.Text);
+        res["TextControlPlaceholderForeground"] = new SolidColorBrush(LT.Faint);
+        res["TextControlPlaceholderForegroundPointerOver"] = new SolidColorBrush(LT.Faint);
+        res["TextControlPlaceholderForegroundFocused"] = new SolidColorBrush(LT.Faint);
+        res["TextControlSelectionHighlightColor"] = new SolidColorBrush(LT.AccentColor.WithOpacity(0.35));
+        res["TextControlBorderThemeThicknessFocused"] = new Thickness(1);
+        t.BorderThickness = new Thickness(1);
+        return t;
     }
 }

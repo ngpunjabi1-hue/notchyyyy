@@ -16,7 +16,7 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 5 ✅ (awaiting your OK) | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
 | 6 ✅ (awaiting your OK) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
 | 7 (in review) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
-| 8 | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
+| 8 (in review) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
 | 9 | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
 | 10 | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
 | 11 | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
@@ -57,6 +57,10 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
 - **Clipboard on Windows** watches the clipboard's sequence number (twice a second, like the Mac's pasteboard check)
   and never keeps copies marked private (password managers; the same marks Windows' own clipboard history honours).
   Not yet: dragging a card out into another app (the Mac allows it) — a follow-up.
+- **Apps on Windows** come from the Start menu's Apps folder (desktop programs and Store apps alike), open through
+  shell:AppsFolder, and show the shell's own icons. Default pins are Windows' counterparts of the Mac's (File
+  Explorer, Edge, Media Player, Notepad, Terminal, Settings — whichever exist). Pins are kept in
+  %APPDATA%\Notchyyyy\apps.json. Not yet: dropping a shortcut onto the shelf, and the right-click menu — follow-ups.
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

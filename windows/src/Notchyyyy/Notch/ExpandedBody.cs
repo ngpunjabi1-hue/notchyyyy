@@ -94,11 +94,13 @@ public sealed class ExpandedBody : Grid
     private HomeView? _home;
     private MediaView? _media;
     private ClipboardView? _clipboard;
+    private AppsView? _apps;
     private Control Content(Tab tab) => tab switch
     {
         Tab.Home => _home ??= new HomeView(_m, _clock),
         Tab.Media => _media ??= new MediaView(_m, _clock),
         Tab.Clipboard => _clipboard ??= new ClipboardView(_m, _clock),
+        Tab.Apps => _apps ??= new AppsView(_m, _clock),
         Tab.Settings => new SettingsView(_m, _clock),
         _ => new TabPlaceholder(tab),
     };
@@ -106,6 +108,7 @@ public sealed class ExpandedBody : Grid
     public SettingsView? CurrentSettings => _content.Current as SettingsView;
     public MediaView? CurrentMedia => _content.Current as MediaView;
     public ClipboardView? CurrentClipboard => _content.Current as ClipboardView;
+    public AppsView? CurrentApps => _content.Current as AppsView;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {

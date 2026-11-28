@@ -445,6 +445,75 @@ public static class WinSelfTest
                 Keys(0x1B);
                 await Wait(0.8);
             }
+            // ---- step 8: apps from the real Start menu ----
+            {
+                var apps = sh.Model.Apps;
+                for (int i = 0; i < 150 && !apps.Scanned; i++) await Wait(0.1);
+                Check("reads the Start menu's apps", apps.Scanned && apps.Installed.Count >= 5, $"{apps.Installed.Count} apps: {string.Join(", ", apps.Installed.Take(12).Select(a => a.Name))}");
+                Check("pins some of Windows' own apps by default", apps.Ids.Count >= 2, string.Join(", ", apps.Ids.Select(apps.Name)));
+                var catalog = new WinApps();
+                var notepad = apps.Installed.FirstOrDefault(a => a.Name.Equals("Notepad", StringComparison.OrdinalIgnoreCase));
+                if (notepad is not null)
+                {
+                    using var img = catalog.Icon(notepad.Id, 64);
+                    int opaque = 0;
+                    if (img is not null)
+                    {
+                        using var bmp = SkiaSharp.SKBitmap.FromImage(img);
+                        for (int y = 0; y < bmp.Height; y += 2) for (int x = 0; x < bmp.Width; x += 2) if (bmp.GetPixel(x, y).Alpha > 128) opaque++;
+                    }
+                    Check("Notepad's icon comes from the shell, not blank", img is not null && opaque > 100, $"{img?.Width}x{img?.Height}, {opaque} opaque samples");
+                    if (!apps.IsPinned(notepad.Id)) apps.Add(notepad.Id);
+                }
+                sh.Model.Tab = Tab.Apps;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.2);
+                var av = sh.Stage.Body.CurrentApps;
+                Check("opens on the Apps tab with the pinned apps", av is not null && av.Grid.Tiles.Any());
+                for (int i = 0; i < 30 && av is not null && av.Grid.Tiles.Any(t => apps.Icon(t.Id!) is null); i++) await Wait(0.1);
+                Save(Capture(), Path.Combine(dir, $"{theme}-11-apps.png"));
+                if (av is not null && notepad is not null && av.Grid.TileFor(notepad.Id) is { } tile)
+                {
+                    var running = System.Diagnostics.Process.GetProcessesByName("Notepad").Select(p => p.Id).ToHashSet();
+                    var tp = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 2), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(tp.X), rc.T + Px(tp.Y));
+                    await Wait(0.3);
+                    Click();
+                    System.Diagnostics.Process? opened = null;
+                    for (int i = 0; i < 80 && opened is null; i++)
+                    {
+                        await Wait(0.1);
+                        opened = System.Diagnostics.Process.GetProcessesByName("Notepad").FirstOrDefault(p => !running.Contains(p.Id));
+                    }
+                    Check("clicking Notepad opens it", opened is not null);
+                    await Wait(0.6);
+                    Check("and the notch closes", !sh.Model.Expanded);
+                    try { opened?.Kill(); } catch { }
+                }
+                // the picker
+                sh.Model.Tab = Tab.Apps;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.2);
+                av = sh.Stage.Body.CurrentApps;
+                if (av is not null)
+                {
+                    var ap = av.AddButton.TranslatePoint(new Point(av.AddButton.Bounds.Width / 2, 13), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(ap.X), rc.T + Px(ap.Y));
+                    await Wait(0.3);
+                    Click();
+                    await Wait(1.0);
+                    Check("Add apps opens the picker with every app", av.ShowingPicker && av.Picker.List.Visible == apps.Installed.Count, $"{av.Picker.List.Visible} rows");
+                    Check("the search field has the keyboard", av.Picker.Search.IsFocused);
+                    Type("note");
+                    await Wait(0.5);
+                    Check("typing filters the list", av.Picker.List.Visible >= 1 && av.Picker.List.Shown.All(r => r.App.Name.Contains("note", StringComparison.OrdinalIgnoreCase)), string.Join(", ", av.Picker.List.Shown.Select(r => r.App.Name)));
+                    await Wait(0.5);
+                    Save(Capture(), Path.Combine(dir, $"{theme}-12-apps-picker.png"));
+                    av.ShowPicker(false);
+                }
+                Keys(0x1B);
+                await Wait(0.8);
+            }
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

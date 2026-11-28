@@ -179,24 +179,7 @@ public sealed class SettingsView : Grid
             CornerRadius = new CornerRadius(7), Padding = new Thickness(10, 5), TextAlignment = TextAlignment.Right,
             VerticalContentAlignment = VerticalAlignment.Center,
         };
-        // Linear's quiet field, not Fluent's: the card surface and hairline at rest, a touch brighter on hover,
-        // a thin accent edge while typing
-        var res = name.Resources;
-        res["TextControlBackground"] = new SolidColorBrush(LT.Surface);
-        res["TextControlBackgroundPointerOver"] = new SolidColorBrush(LT.SurfaceHi);
-        res["TextControlBackgroundFocused"] = new SolidColorBrush(LT.Surface);
-        res["TextControlBorderBrush"] = new SolidColorBrush(LT.Border);
-        res["TextControlBorderBrushPointerOver"] = new SolidColorBrush(LT.BorderHi);
-        res["TextControlBorderBrushFocused"] = new SolidColorBrush(LT.AccentColor);
-        res["TextControlForeground"] = new SolidColorBrush(LT.Text);
-        res["TextControlForegroundPointerOver"] = new SolidColorBrush(LT.Text);
-        res["TextControlForegroundFocused"] = new SolidColorBrush(LT.Text);
-        res["TextControlPlaceholderForeground"] = new SolidColorBrush(LT.Faint);
-        res["TextControlPlaceholderForegroundPointerOver"] = new SolidColorBrush(LT.Faint);
-        res["TextControlPlaceholderForegroundFocused"] = new SolidColorBrush(LT.Faint);
-        res["TextControlSelectionHighlightColor"] = new SolidColorBrush(LT.AccentColor.WithOpacity(0.35));
-        res["TextControlBorderThemeThicknessFocused"] = new Thickness(1);
-        name.BorderThickness = new Thickness(1);
+        Fields.Quiet(name);
         void Commit() { var n = (name.Text ?? "").Trim(); if (n.Length > 0) { _m.UserName = n; P.UserName = n; } }
         name.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Commit(); e.Handled = true; } };
         name.LostFocus += (_, _) => Commit();

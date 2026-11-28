@@ -5,7 +5,8 @@ namespace Notchyyyy.Theme;
 
 public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note,
     Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare,
-    Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne, Trash, TextLines, Photo, Palette, Shapes, Check }
+    Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne, Trash, TextLines, Photo, Palette, Shapes, Check,
+    Pencil, Search, PlusCircle, CheckCircle }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -366,6 +367,34 @@ public static class Icons
             case IconKind.Check:
                 Stroke(Line((4.6, 12.6), (9.6, 17.4), (19.6, 6.6)));
                 break;
+            case IconKind.Pencil:       // a pencil at 45°: the body with its point at the bottom left, the eraser apart
+                Shape(Poly((14.4, 5.6), (18.4, 9.6), (8.6, 19.4), (3.8, 20.2), (4.6, 15.4)));
+                Shape(Poly((16, 4), (17.6, 2.4), (21.6, 6.4), (20, 8)));
+                break;
+            case IconKind.Search:       // a magnifying glass
+                ctx.DrawEllipse(null, line, m.Transform(new Point(10.4, 10.4)), 6.4 * k, 6.4 * k);
+                Stroke(Line((15.2, 15.2), (20.4, 20.4)));
+                break;
+            case IconKind.PlusCircle:
+                ctx.DrawEllipse(null, new Pen(fill, 1.9 * k), m.Transform(new Point(12, 12)), 9.2 * k, 9.2 * k);
+                Stroke(Line((12, 7.6), (12, 16.4)));
+                Stroke(Line((7.6, 12), (16.4, 12)));
+                break;
+            case IconKind.CheckCircle:
+            {
+                var disc = new EllipseGeometry(new Rect(2.4, 2.4, 19.2, 19.2));
+                var tick = new StreamGeometry();
+                using (var g = tick.Open())
+                {
+                    // the tick, cut out of the disc as a 2.4-unit-wide band
+                    g.BeginFigure(new Point(6.8, 12.4), true);
+                    g.LineTo(new Point(8.5, 10.7)); g.LineTo(new Point(10.7, 12.9)); g.LineTo(new Point(15.5, 8.1));
+                    g.LineTo(new Point(17.2, 9.8)); g.LineTo(new Point(10.7, 16.3));
+                    g.EndFigure(true);
+                }
+                Fill(new CombinedGeometry(GeometryCombineMode.Exclude, disc, tick));
+                break;
+            }
             case IconKind.AppSquare:
                 Shape(new RectangleGeometry(new Rect(4, 4, 16, 16), 4.4, 4.4));
                 break;

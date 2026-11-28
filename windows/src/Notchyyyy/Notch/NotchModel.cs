@@ -100,6 +100,9 @@ public sealed class NotchModel
     /// The last 40 copies (Windows' clipboard; samples with `--sample`).
     public global::Notchyyyy.Clipboard.Clips Clips { get; } = new();
 
+    /// The pinned apps and every Start-menu app (a stand-in list on the Mac preview).
+    public global::Notchyyyy.Apps.Favorites Apps { get; } = new();
+
     public NotchModel()
     {
         Media = new global::Notchyyyy.Media.MediaPlayer(new Motion.SystemClock());

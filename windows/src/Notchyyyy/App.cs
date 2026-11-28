@@ -78,6 +78,8 @@ public sealed class Shell
         Model.Clips.Start(OperatingSystem.IsWindows()
             ? new Platform.WinClipboard(() => Window?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero)
             : new Clipboard.MemoryClipboard());
+        // apps: the Start menu on Windows; a stand-in list on the Mac preview
+        Model.Apps.Start(OperatingSystem.IsWindows() ? new Platform.WinApps() : new Apps.SampleCatalog());
         // Grayscale text smoothing, as on the Mac: Windows' default sub-pixel (ClearType) smoothing left red/blue
         // fringes on the text (seen on the Windows runner), and fringes turn into halos when text fades over a transparent window.
         TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);
@@ -93,6 +95,7 @@ public sealed class Shell
         };
 
         Stage.Pill.Close = Tracker.Collapse;
+        AppsView.Collapse = Tracker.Collapse;
         Prefs.Shared.Changed += name =>
         {
             if (name == nameof(Prefs.Appearance) && Application.Current is { } app)
