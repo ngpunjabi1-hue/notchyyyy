@@ -74,6 +74,10 @@ public sealed class Shell
 #endif
         Stage = new NotchStage(Model, Clock) { Width = StageWidth, Height = StageHeight };
         Model.Media.Start(source);
+        // the clipboard: Windows' own (copies are watched from launch); on the Mac preview, samples with --sample
+        Model.Clips.Start(OperatingSystem.IsWindows()
+            ? new Platform.WinClipboard(() => Window?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero)
+            : new Clipboard.MemoryClipboard());
         // Grayscale text smoothing, as on the Mac: Windows' default sub-pixel (ClearType) smoothing left red/blue
         // fringes on the text (seen on the Windows runner), and fringes turn into halos when text fades over a transparent window.
         TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);

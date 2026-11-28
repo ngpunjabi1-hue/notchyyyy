@@ -14,8 +14,8 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 3 ✅ | **Glass tab bar + close button**, tab switching with a cross-fade, Esc and Ctrl+1…9. | Screenshots, UI self-test clicks every tab. |
 | 4 ✅ (awaiting your OK; smoothness to confirm on your laptop) | **Sprout** (the painter, poses and morphing, gaze, states) in the closed pill and on Home; **Home** (one-line greeting, icon quick actions). | Frame strips of every mood and each transition. |
 | 5 ✅ (awaiting your OK) | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
-| 6 (in review) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
-| 7 | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
+| 6 ✅ (awaiting your OK) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
+| 7 (in review) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
 | 8 | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
 | 9 | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
 | 10 | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
@@ -54,6 +54,9 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
 - **Media on Windows** reads the system's media sessions (SMTC: Spotify, Media Player, browsers…). Shuffle and repeat
   show only when the playing app supports them; with nothing playing the button opens Media Player. No app icon in
   the "Playing from" chip (the Mac shows one).
+- **Clipboard on Windows** watches the clipboard's sequence number (twice a second, like the Mac's pasteboard check)
+  and never keeps copies marked private (password managers; the same marks Windows' own clipboard history honours).
+  Not yet: dragging a card out into another app (the Mac allows it) — a follow-up.
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

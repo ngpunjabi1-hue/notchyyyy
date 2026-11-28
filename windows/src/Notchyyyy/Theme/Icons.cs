@@ -5,7 +5,7 @@ namespace Notchyyyy.Theme;
 
 public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note,
     Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare,
-    Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne }
+    Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne, Trash, TextLines, Photo, Palette, Shapes, Check }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -325,6 +325,47 @@ public static class Icons
                     Stroke(Line((10.6, 10.6), (12.2, 9.6), (12.2, 14.4)));
                 break;
             }
+            case IconKind.Trash:        // a bin with a lid and a handle
+                Shape(new CombinedGeometry(GeometryCombineMode.Exclude,
+                    Poly((5.4, 7.6), (18.6, 7.6), (17.4, 20.4), (6.6, 20.4)),
+                    new CombinedGeometry(GeometryCombineMode.Union,
+                        new RectangleGeometry(new Rect(9.1, 10.2, 1.8, 7.6), 0.9, 0.9),
+                        new RectangleGeometry(new Rect(13.1, 10.2, 1.8, 7.6), 0.9, 0.9))));
+                Fill(new RectangleGeometry(new Rect(3.6, 4.6, 16.8, 2.2), 1.1, 1.1));
+                Fill(new RectangleGeometry(new Rect(9.2, 2.4, 5.6, 2.6), 1.1, 1.1));
+                break;
+            case IconKind.TextLines:    // left-aligned lines of text
+                Stroke(Line((4, 6), (20, 6)));
+                Stroke(Line((4, 10.7), (15, 10.7)));
+                Stroke(Line((4, 15.4), (20, 15.4)));
+                Stroke(Line((4, 20), (12.5, 20)));
+                break;
+            case IconKind.Photo:        // a framed picture: a sun and a hill cut out of it
+            {
+                Geometry g = new RectangleGeometry(new Rect(2.8, 4.4, 18.4, 15.2), 3, 3);
+                g = new CombinedGeometry(GeometryCombineMode.Exclude, g, new EllipseGeometry(new Rect(6.6, 7.6, 4, 4)));
+                g = new CombinedGeometry(GeometryCombineMode.Exclude, g, Poly((5.2, 17.6), (10.4, 12.2), (13.4, 15.2), (15.6, 13), (19.2, 17.6)));
+                Shape(g);
+                break;
+            }
+            case IconKind.Palette:      // a painter's palette with paint wells
+            {
+                Geometry g = new EllipseGeometry(new Rect(2.6, 3.4, 18.8, 17.2));
+                g = new CombinedGeometry(GeometryCombineMode.Exclude, g, new EllipseGeometry(new Rect(14.2, 13.4, 5.8, 5.8)));
+                foreach (var (x, y) in new[] { (6.4, 9.6), (9.6, 6.4), (14, 6.6) })
+                    g = new CombinedGeometry(GeometryCombineMode.Exclude, g, new EllipseGeometry(new Rect(x, y, 3.2, 3.2)));
+                g = new CombinedGeometry(GeometryCombineMode.Exclude, g, new EllipseGeometry(new Rect(5.8, 14, 3.2, 3.2)));
+                Shape(g);
+                break;
+            }
+            case IconKind.Shapes:       // a square overlapping a circle (vector shapes)
+                Shape(new RectangleGeometry(new Rect(3.2, 3.2, 10.6, 10.6), 2, 2));
+                Shape(new CombinedGeometry(GeometryCombineMode.Exclude,
+                    new EllipseGeometry(new Rect(9.6, 9.6, 11.4, 11.4)), new RectangleGeometry(new Rect(2, 2, 13.4, 13.4), 3, 3)));
+                break;
+            case IconKind.Check:
+                Stroke(Line((4.6, 12.6), (9.6, 17.4), (19.6, 6.6)));
+                break;
             case IconKind.AppSquare:
                 Shape(new RectangleGeometry(new Rect(4, 4, 16, 16), 4.4, 4.4));
                 break;

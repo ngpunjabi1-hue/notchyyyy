@@ -93,16 +93,19 @@ public sealed class ExpandedBody : Grid
     // Home is made once and kept: building it again on every switch cost a visible stall (measured on Windows)
     private HomeView? _home;
     private MediaView? _media;
+    private ClipboardView? _clipboard;
     private Control Content(Tab tab) => tab switch
     {
         Tab.Home => _home ??= new HomeView(_m, _clock),
         Tab.Media => _media ??= new MediaView(_m, _clock),
+        Tab.Clipboard => _clipboard ??= new ClipboardView(_m, _clock),
         Tab.Settings => new SettingsView(_m, _clock),
         _ => new TabPlaceholder(tab),
     };
 
     public SettingsView? CurrentSettings => _content.Current as SettingsView;
     public MediaView? CurrentMedia => _content.Current as MediaView;
+    public ClipboardView? CurrentClipboard => _content.Current as ClipboardView;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {

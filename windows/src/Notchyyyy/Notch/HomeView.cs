@@ -81,6 +81,7 @@ public sealed class HomeView : Canvas
         header.Children.Add(words);
 
         _m2 = m;
+        _clipRow = new GlanceRow(IconKind.Clipboard, "Nothing copied yet", "What you copy is kept here", clock, () => m.Tab = Tab.Clipboard);
         _mediaRow = new GlanceRow(IconKind.Note, "Nothing playing", "Spotify, Media Player or YouTube", clock, () => m.Tab = Tab.Media);
         // the Mac's MusicBars before the chevron while something plays (drawn on the render thread)
         _mediaBars = new LiveCanvas(clock, (c, size, now) => Sk.MusicBars(c, size.Width / 2, size.Height / 2, 1, Sk.C(_barsTint), now))
@@ -96,7 +97,7 @@ public sealed class HomeView : Canvas
             {
                 new Panel { Children = { _mediaRow, _mediaBars } },
                 new GlanceRow(IconKind.Today, "Nothing planned today", "Add a task in Today", clock, () => m.Tab = Tab.Today),
-                new GlanceRow(IconKind.Clipboard, "Nothing copied yet", "What you copy is kept here", clock, () => m.Tab = Tab.Clipboard),
+                _clipRow,
             },
         };
         var column = new StackPanel { Spacing = 14, Width = RightWidth, Children = { header, rows } };
@@ -111,7 +112,18 @@ public sealed class HomeView : Canvas
     private readonly StackPanel _actions;
     private IDisposable? _timer;
     private readonly NotchModel _m2;
-    private readonly GlanceRow _mediaRow;
+    private readonly GlanceRow _mediaRow, _clipRow;
+    public GlanceRow ClipRow => _clipRow;
+
+    /// The clipboard row: the newest copy, its kind and how long ago.
+    private void OnClips(string what, Clipboard.ClipItem? item)
+    {
+        var first = _m2.Clips.Items.FirstOrDefault();
+        _clipRow.Title = first?.Preview ?? "Nothing copied yet";
+        _clipRow.Detail = first is null ? "What you copy is kept here"
+            : $"{first.Label} · {(Clipboard.Clips.Relative(first.Date) is var r && r == "now" ? "just now" : r + " ago")}";
+        _clipRow.InvalidateVisual();
+    }
     private readonly LiveCanvas _mediaBars;
     private volatile bool _barsOn;
     private Color _barsTint;
@@ -140,13 +152,16 @@ public sealed class HomeView : Canvas
         Refresh();      // Home is reused: catch up on anything that changed while it was away (a new name, the hour)
         _m2.Media.Changed += OnMedia;
         OnMedia("");
-        _timer ??= DispatcherTimer.Run(() => { Refresh(); return true; }, TimeSpan.FromSeconds(20));
+        _m2.Clips.Changed += OnClips;
+        OnClips("", null);
+        _timer ??= DispatcherTimer.Run(() => { Refresh(); OnClips("", null); return true; }, TimeSpan.FromSeconds(20));
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         _timer?.Dispose(); _timer = null;
         _m2.Media.Changed -= OnMedia;
+        _m2.Clips.Changed -= OnClips;
     }
 
     public bool Refreshing => _timer is not null;

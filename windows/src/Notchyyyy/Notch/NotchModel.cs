@@ -97,6 +97,9 @@ public sealed class NotchModel
     /// What's playing (Windows' media sessions; the demo track with `--demo`).
     public global::Notchyyyy.Media.MediaPlayer Media { get; }
 
+    /// The last 40 copies (Windows' clipboard; samples with `--sample`).
+    public global::Notchyyyy.Clipboard.Clips Clips { get; } = new();
+
     public NotchModel()
     {
         Media = new global::Notchyyyy.Media.MediaPlayer(new Motion.SystemClock());

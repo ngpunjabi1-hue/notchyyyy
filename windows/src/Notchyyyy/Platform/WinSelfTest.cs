@@ -400,6 +400,51 @@ public static class WinSelfTest
                 await Wait(0.8);
             }
 #endif
+            // ---- step 7: the clipboard, copied to the way another app copies ----
+            {
+                var other = new WinClipboard(() => hwnd);   // another writer: the app only ignores its own copies
+                var clips = sh.Model.Clips;
+                async Task<bool> Until(Func<bool> ok) { for (int i = 0; i < 30 && !ok(); i++) await Wait(0.1); return ok(); }
+                other.WriteText("Notchyyyy self-test text");
+                Check("a copied text shows up first", await Until(() => clips.Items.FirstOrDefault()?.Text == "Notchyyyy self-test text"));
+                other.WriteText("#E5484D");
+                Check("a copied colour code becomes a colour card", await Until(() => clips.Items.FirstOrDefault()?.Color?.Hex == "#E5484D"));
+                using (var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(120, 80)))
+                {
+                    surface.Canvas.Clear(new SkiaSharp.SKColor(48, 164, 108));
+                    using var snap = surface.Snapshot();
+                    using var data = snap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                    other.WritePng(data.ToArray());
+                }
+                Check("a copied image becomes an image card", await Until(() => clips.Items.FirstOrDefault()?.Kind == Clipboard.ClipKind.Image));
+                int kept = clips.Items.Count;
+                other.WritePrivateText("hunter2-password");
+                await Wait(1.2);
+                Check("a password manager's copy is never kept", clips.Items.Count == kept && !clips.Items.Any(c => c.Text.Contains("hunter2")));
+
+                sh.Model.Tab = Tab.Clipboard;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.2);
+                var cv = sh.Stage.Body.CurrentClipboard;
+                Check("opens on the Clipboard tab with the cards", cv is not null && cv.Strip.Cards.Count() >= 3);
+                Save(Capture(), Path.Combine(dir, $"{theme}-9-clipboard.png"));
+                if (cv is not null && cv.Strip.Cards.FirstOrDefault(c => c.Item.Color is not null) is { } colour)
+                {
+                    // the RGB chip under the swatch
+                    double cw = (Notch.ClipCard.W - 12 - 8) / 3;
+                    var cp = colour.TranslatePoint(new Point(6 + cw + 4 + cw / 2, Notch.ClipCard.BodyH - 15), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(cp.X), rc.T + Px(cp.Y));
+                    await Wait(0.3);
+                    int count = clips.Items.Count;
+                    Click();
+                    await Wait(0.8);
+                    Check("clicking RGB copies the colour as rgb()", WinClipboard.Read()?.Text == "rgb(229, 72, 77)", $"clipboard '{WinClipboard.Read()?.Text}'");
+                    Check("copying back doesn't add a duplicate card", clips.Items.Count == count);
+                    Save(Capture(), Path.Combine(dir, $"{theme}-10-clipboard-copied.png"));
+                }
+                Keys(0x1B);
+                await Wait(0.8);
+            }
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }
