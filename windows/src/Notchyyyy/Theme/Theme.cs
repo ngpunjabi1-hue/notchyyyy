@@ -79,6 +79,9 @@ public sealed class Prefs
     public WaterInterval WaterInterval { get => _waterInterval; set => Set(ref _waterInterval, value); }
     public int WaterGoal { get => _waterGoal; set => Set(ref _waterGoal, Math.Clamp(value, 1, 20)); }
     public bool AutoUpdate { get => _autoUpdate; set => Set(ref _autoUpdate, value); }
+    /// The first-run setup is finished (`--sample` counts as set up; `--onboarding` shows the setup anyway).
+    public bool Onboarded { get => _onboarded; set => Set(ref _onboarded, value); }
+    private bool _onboarded;
 
     public double HoverDelay => HoverSpeed switch { HoverSpeed.Instant => 0.03, HoverSpeed.Relaxed => 0.35, _ => 0.12 };
 
@@ -136,6 +139,8 @@ public sealed class Prefs
         p._loading = true;
         if (Debug.Has("--light")) p.Appearance = Appearance.Light;
         if (Debug.Has("--dark")) p.Appearance = Appearance.Dark;
+        if (Debug.Sample || Debug.Has("--perf") || Debug.Has("--win-selftest")) p.Onboarded = !Debug.Has("--onboarding");
+        if (Debug.Has("--onboarding")) p.Onboarded = false;
         p._loading = false;
         p.Path_ = path;
         // the app's own settings are read-only under test flags; a file a test names explicitly is always writable

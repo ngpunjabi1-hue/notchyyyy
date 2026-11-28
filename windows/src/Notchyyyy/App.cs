@@ -124,12 +124,59 @@ public sealed class Shell
             {
                 if (UseFakePointer && TickTimes.Count < 4000) TickTimes.Add(Clock.Now);
                 var p = UseFakePointer ? FakePointer : _pointer.Read(Stage);
+                Model.TickPeek(Clock.Now);      // a bubble left alone tucks itself away
                 Tracker.Tick(p);
                 LookAt(p);
                 return true;
             }, TimeSpan.FromMilliseconds(16), DispatcherPriority.Input);
+            StartStep11();
             DebugHarness.Start(this);
         };
+    }
+
+    public Sprout.Senses? Senses { get; private set; }
+
+    /// Sprout's senses, water reminders and the first-run setup.
+    private void StartStep11()
+    {
+        // Sprout's senses (typing pace, stepping away) run only while it lives in the notch
+#if WINDOWS
+        Sprout.ISenseSource src = new Platform.WinSenses();
+#else
+        Sprout.ISenseSource src = new Sprout.NoSenses();
+#endif
+        Senses = new Sprout.Senses(Model.Buddy, Clock, src);
+        if (Prefs.Shared.Buddy) Senses.Start();
+        Prefs.Shared.Changed += name => { if (name == nameof(Prefs.Buddy)) { if (Prefs.Shared.Buddy) Senses.Start(); else Senses.Stop(); } };
+
+        // water: checked three times a minute; the bubble shows only while the notch is closed
+        DispatcherTimer.Run(() => { MaybeRemind(); return true; }, TimeSpan.FromSeconds(20));
+        // the heads-up ring in the minute before a reminder
+        bool soon = Model.Water.DueSoon;
+        DispatcherTimer.Run(() => { if (Model.Water.DueSoon != soon) { soon = !soon; Model.Notify("Water"); } return true; }, TimeSpan.FromSeconds(2));
+        Model.Water.Changed += _ => Model.Notify("Water");
+        if (Theme.Debug.Has("--peek")) DispatcherTimer.RunOnce(Remind, TimeSpan.FromSeconds(1.5));
+
+        // first launch: open on the setup, and stay open until it's finished
+        if (!Model.Onboarded && !Theme.Debug.Has("--open"))
+        {
+            Model.Tab = Tab.Home;
+            Model.Pinned = true;
+            DispatcherTimer.RunOnce(Tracker.Expand, TimeSpan.FromSeconds(1.2));
+        }
+    }
+
+    private void MaybeRemind()
+    {
+        if (Model.Expanded || Model.Peeking != Notch.Peek.None || !Model.Water.IsDue()) return;
+        Remind();
+    }
+
+    /// Time for water: the bubble for 40 s; left alone, it asks again 15 minutes later.
+    public void Remind()
+    {
+        Model.Water.Reminded();
+        Model.ShowPeek(Notch.Peek.Hydrate, Clock.Now, 40, () => Model.Water.Later(15));
     }
 
     /// The little Sprout's eyes follow the pointer when it's near the top of the screen (the Mac's track()):

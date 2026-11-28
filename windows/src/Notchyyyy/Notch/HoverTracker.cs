@@ -17,6 +17,7 @@ public sealed class HoverTracker
     private double? _expandAt, _collapseAt;
     /// After a collapse the pointer must leave the pill before it can open again (no bounce-back).
     private bool _needsExit;
+    private bool _wasPeeking, _bubbleInteractive;
 
     /// Told when the window should start or stop taking clicks.
     public Action<bool>? SetInteractive { get; set; }
@@ -30,6 +31,25 @@ public sealed class HoverTracker
     {
         double now = _clock.Now;
         var p = pointer ?? new Point(double.MaxValue / 4, double.MaxValue / 4);
+
+        // a bubble is up: it takes clicks only inside itself, and the notch doesn't open under it
+        if (_m.PeekShown)
+        {
+            var ps = _m.PeekSize;
+            bool inBubble = Math.Abs(p.X) <= ps.Width / 2 && p.Y >= -2 && p.Y <= ps.Height;
+            if (inBubble != _bubbleInteractive) { _bubbleInteractive = inBubble; SetInteractive?.Invoke(inBubble); }
+            _expandAt = null;
+            if (_m.Hovering) _m.Hovering = false;
+            _wasPeeking = true;
+            return;
+        }
+        if (_wasPeeking)
+        {
+            // the bubble just went: don't spring open under a pointer that was clicking it
+            _wasPeeking = false;
+            if (_bubbleInteractive && !_m.Expanded) { _bubbleInteractive = false; SetInteractive?.Invoke(false); }
+            _needsExit = true;
+        }
 
         if (_m.Expanded)
         {
@@ -58,6 +78,8 @@ public sealed class HoverTracker
     {
         _expandAt = null;
         if (_m.Expanded) return;
+        _m.EndPeek();
+        _wasPeeking = false; _bubbleInteractive = false;
         SetInteractive?.Invoke(true);
         // Expanded first: once open, hovering no longer changes the size, so clearing it can't
         // start a hover spring that the delayed open-height spring would then have to undo.

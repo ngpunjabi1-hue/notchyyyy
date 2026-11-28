@@ -211,8 +211,14 @@ public sealed class SettingsView : Grid
         var auto = Row("Update automatically", "New versions install by themselves while the notch is idle",
                        new Toggle(_clock, () => P.AutoUpdate, v => P.AutoUpdate = v));
         auto.MinHeight = 0;
-        var setup = new PillButton(_clock, "Run setup again", IconKind.Sparkle, null) { Enabled = false };
-        ToolTip.SetTip(setup, "Setup arrives in step 11");
+        var setup = new PillButton(_clock, "Run setup again", IconKind.Sparkle, () =>
+        {
+            // back to the start of setup; the notch stays open until it's finished
+            OnboardingView.Saved = SetupStep.Name;
+            _m.Pinned = true;
+            _m.Tab = Tab.Home;
+            _m.Onboarded = false;
+        });
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal, Spacing = 10,

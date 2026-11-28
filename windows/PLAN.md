@@ -18,8 +18,8 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 7 ✅ (awaiting your OK) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
 | 8 ✅ (awaiting your OK) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
 | 9 ✅ (awaiting your OK) | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
-| 10 (in review) | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
-| 11 | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
+| 10 ✅ (awaiting your OK) | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
+| 11 (in review) | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
 | 12 | **Installer + auto-updates**: Velopack releases, one-line PowerShell installer (`irm … | iex`), data kept across updates. | Install, update and uninstall on the runner; final check on your laptop. Nothing is published until you say so, and I'll ask which repo first. |
 
 ## Release 2
@@ -68,6 +68,12 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
 - **System on Windows** reads what Task Manager reads, without administrator rights: CPU per core from the kernel's
   processor times, GPU from the "GPU Engine" counters (3D engines, the busiest graphics chip), memory in use, and the
   system drive. A machine without GPU counters says so instead of showing 0 %.
+- **Sprout's senses on Windows**: Windows has no "seconds since the last key" counter, so key presses are counted from
+  raw keyboard input sent to a small message-only window of Notchyyyy's own (no keyboard hook, no permission; only a
+  count is kept, never which key), and idle time comes from GetLastInputInfo. Same rules as the Mac: four keys in a
+  second is typing, a minute without input is away.
+- **The setup's last tip** is "Ctrl+1…9 switch tabs, Esc closes" (the Mac's voice-note shortcut arrives with voice
+  notes in release 2).
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

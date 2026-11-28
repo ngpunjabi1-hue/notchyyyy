@@ -45,7 +45,30 @@ public sealed class CollapsedBar : Control
 
     public override void Render(DrawingContext ctx)
     {
-        if (!_m.LiveActivity) return;
+        if (!_m.LiveActivity)
+        {
+            // only in the minute before a water reminder, as a heads-up (with Sprout on the left)
+            if (Prefs.Shared.Buddy && _m.Water.DueSoon)
+            {
+                var c = new Point(Bounds.Width - (6 + 12) - 12, Bounds.Height / 2);
+                double f = Math.Min(1, _m.Water.Count / (double)Math.Max(1, _m.Water.Goal)), r = 7;
+                ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Colors.White.WithOpacity(0.14)), 2), c, r, r);
+                if (f > 0.001)
+                {
+                    var arc = new StreamGeometry();
+                    using (var g = arc.Open())
+                    {
+                        double end = Math.Min(f, 0.9999) * 2 * Math.PI - Math.PI / 2;
+                        g.BeginFigure(new Point(c.X, c.Y - r), false);
+                        g.ArcTo(new Point(c.X + r * Math.Cos(end), c.Y + r * Math.Sin(end)), new Size(r, r), 0, f > 0.5, SweepDirection.Clockwise);
+                        g.EndFigure(false);
+                    }
+                    ctx.DrawGeometry(null, new Pen(new SolidColorBrush(PeekBubble.WaterBlue), 2, lineCap: PenLineCap.Round), arc);
+                }
+                Icons.Draw(ctx, IconKind.Drop, c, 8, PeekBubble.WaterBlue);
+            }
+            return;
+        }
         double h = Bounds.Height, inset = 6 + 12;   // the bar's padding, then inset from the rounded ends
         double now = _clock.Now;
 

@@ -613,6 +613,90 @@ public static class WinSelfTest
                 Keys(0x1B);
                 await Wait(0.8);
             }
+            // ---- step 11: Sprout's senses, the water bubble, the setup ----
+            {
+                // typing: Shift tapped quickly (counted as key presses, and it types nothing anywhere)
+                SetCursorPos(away.X, away.Y);
+                await Wait(0.3);
+                for (int i = 0; i < 10; i++) { Keys(0x10); await Wait(0.09); }
+                await Wait(0.1);
+                Check("quick key presses make Sprout run (typing sensed, no hook)", sh.Model.Buddy.Typing, $"senses running: {sh.Senses?.Running}");
+                await Wait(1.3);
+                Check("it stops once the keys stop", !sh.Model.Buddy.Typing);
+#if WINDOWS
+                var senses = new WinSenses();
+                Check("raw keyboard input is available", senses.Available);
+                double idle1 = senses.SecondsSinceInput;
+                await Wait(1.6);
+                double idle2 = senses.SecondsSinceInput;
+                Check("idle time counts up without input", idle2 > idle1 + 1.2, $"{idle1:0.0} s → {idle2:0.0} s");
+#endif
+                // the water bubble
+                sh.Remind();
+                await Wait(1.2);
+                Check("a reminder swells the closed notch into a bubble", sh.Model.Peeking == Notch.Peek.Hydrate && !sh.Model.Expanded && Math.Abs(sh.Stage.CurrentWidth - 420) < 1,
+                    $"peek {sh.Model.Peeking}, width {sh.Stage.CurrentWidth:0}");
+                Save(Capture(), Path.Combine(dir, $"{theme}-18-water-bubble.png"));
+                var dp = sh.Stage.Peek.DrankButton.TranslatePoint(new Point(sh.Stage.Peek.DrankButton.Bounds.Width / 2, 14), sh.Window)!.Value;
+                SetCursorPos(rc.L + Px(dp.X), rc.T + Px(dp.Y));
+                await Wait(0.3);
+                Check("the bubble takes clicks (only inside itself)", (GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64() & WS_EX_TRANSPARENT) == 0);
+                int glasses = sh.Model.Water.Count;
+                Click();
+                await Wait(0.5);
+                Check("Drank counts a glass and Sprout cheers", sh.Model.Water.Count == glasses + 1 && sh.Model.Peeking == Notch.Peek.Cheer, $"{sh.Model.Water.Count} glasses, {sh.Model.Peeking}");
+                Save(Capture(), Path.Combine(dir, $"{theme}-19-water-cheer.png"));
+                await Wait(2.4);
+                Check("the bubble tucks itself away, and the notch doesn't open under the pointer", sh.Model.Peeking == Notch.Peek.None && !sh.Model.Expanded);
+                Check("clicks pass through again", (GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64() & WS_EX_TRANSPARENT) != 0);
+                SetCursorPos(away.X, away.Y);
+                await Wait(0.6);
+
+                // the setup, as on a first launch: a typed name and real clicks on each button
+                Notch.OnboardingView.Saved = Notch.SetupStep.Name;
+                sh.Model.Tab = Tab.Home;
+                sh.Model.Pinned = true;
+                sh.Model.Onboarded = false;
+                sh.Tracker.Expand();
+                await Wait(1.4);
+                var setup = sh.Stage.Body.CurrentSetup;
+                Check("setup opens in the notch, without the tab bar", setup is not null && sh.Stage.PillOpacity < 0.01);
+                if (setup is not null)
+                {
+                    var np = setup.NameBox.TranslatePoint(new Point(60, 21), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(np.X), rc.T + Px(np.Y));
+                    await Wait(0.2);
+                    Click();
+                    await Wait(0.3);
+                    Keys(0x11, 0x41);
+                    Type("Sam");
+                    await Wait(0.3);
+                    Save(Capture(), Path.Combine(dir, $"{theme}-20-setup-name.png"));
+                    Keys(0x0D);
+                    await Wait(0.8);
+                    Check("a typed name and Enter move on", setup.Step == Notch.SetupStep.Look && sh.Model.UserName == "Sam", $"step {setup.Step}, name '{sh.Model.UserName}'");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        setup = sh.Stage.Body.CurrentSetup!;
+                        var pp = setup.Primary.TranslatePoint(new Point(setup.Primary.Bounds.Width / 2, 16), sh.Window)!.Value;
+                        SetCursorPos(rc.L + Px(pp.X), rc.T + Px(pp.Y));
+                        await Wait(0.25);
+                        Click();
+                        await Wait(0.8);
+                    }
+                    setup = sh.Stage.Body.CurrentSetup!;
+                    Check("Continue goes through every step", setup.Step == Notch.SetupStep.Done, $"step {setup.Step}");
+                    Save(Capture(), Path.Combine(dir, $"{theme}-21-setup-done.png"));
+                    var sp = setup.Primary.TranslatePoint(new Point(setup.Primary.Bounds.Width / 2, 16), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(sp.X), rc.T + Px(sp.Y));
+                    await Wait(0.25);
+                    Click();
+                    await Wait(1.2);
+                    Check("Start using Notchyyyy finishes: Home and the tab bar", sh.Model.Onboarded && !sh.Model.Pinned && sh.Stage.Body.CurrentHome is not null && sh.Stage.PillOpacity > 0.99);
+                }
+                Keys(0x1B);
+                await Wait(0.8);
+            }
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

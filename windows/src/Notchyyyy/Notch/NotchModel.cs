@@ -35,9 +35,8 @@ public static class TabInfo
 
 /// <summary>
 /// What the little Sprout in the closed pill knows about you (the Mac's BuddyState): where the pointer is, whether
-/// you're typing fast or have stepped away, and when it last celebrated. The real sensors (typing pace from a
-/// keyboard hook that only counts, idle time from GetLastInputInfo) arrive in plan step 11; until then the test
-/// flags --fake-typing and --fake-away stand in.
+/// you're typing fast or have stepped away, and when it last celebrated. <see cref="Senses"/> keeps it up to date;
+/// the test flags --fake-typing and --fake-away stand in for the real sensors.
 /// </summary>
 public sealed class BuddyState
 {
@@ -51,6 +50,9 @@ public sealed class BuddyState
     /// The hour of the day (a test can pin it).
     public Func<int> Hour { get; set; } = () => Theme.Wall.Now().Hour;
 }
+
+/// What the peek bubble says: time for water, a cheer after a glass, or that Notchyyyy just updated itself.
+public enum Peek { None, Hydrate, Cheer, Updated }
 
 /// The state the notch is drawn from. Views listen to <see cref="Changed"/>.
 public sealed class NotchModel
@@ -69,8 +71,48 @@ public sealed class NotchModel
     public IReadOnlyList<Tab> VisibleTabs =>
         Enum.GetValues<Tab>().Where(t => !t.Hideable() || !Prefs.Shared.HiddenTabs.Contains(t.Key())).ToList();
 
-    /// Finished the first-run setup (onboarding arrives in plan step 11; until then, always).
-    public bool Onboarded => true;
+    /// Finished the first-run setup (kept in the settings; Settings › About can run it again).
+    public bool Onboarded
+    {
+        get => Prefs.Shared.Onboarded;
+        set { if (Prefs.Shared.Onboarded == value) return; Prefs.Shared.Onboarded = value; Changed?.Invoke(nameof(Onboarded)); }
+    }
+
+    // ---- the peek bubble: the closed notch swells a little to say something ----
+
+    /// What the bubble says (None: no bubble).
+    public Peek Peeking { get; private set; }
+    private double _peekUntil;
+    private Action? _peekDone;
+    /// The bubble shows (only while the notch is closed).
+    public bool PeekShown => Peeking != Peek.None && !Expanded;
+    public Size PeekSize => new(420, NotchSize.Height + 60);
+
+    /// Shows the bubble for <paramref name="seconds"/>; <paramref name="timedOut"/> runs if it's left alone that long.
+    public void ShowPeek(Peek p, double now, double seconds, Action? timedOut = null)
+    {
+        Peeking = p; _peekUntil = now + seconds; _peekDone = timedOut;
+        Changed?.Invoke(nameof(Peeking));
+    }
+
+    /// Tells the views something changed that the model doesn't own ("Water", …).
+    public void Notify(string what) => Changed?.Invoke(what);
+
+    public void EndPeek()
+    {
+        if (Peeking == Peek.None) return;
+        Peeking = Peek.None; _peekDone = null;
+        Changed?.Invoke(nameof(Peeking));
+    }
+
+    /// Called with the app's clock (the shell's pointer tick): a bubble left alone tucks itself away.
+    public void TickPeek(double now)
+    {
+        if (Peeking == Peek.None || now < _peekUntil) return;
+        var done = _peekDone;
+        EndPeek();
+        done?.Invoke();
+    }
 
     public BuddyState Buddy { get; } = new();
 
@@ -78,8 +120,11 @@ public sealed class NotchModel
     public string UserName { get; set; } = Theme.Debug.Value("--name") ?? Prefs.Shared.UserName;
     public string FirstName => UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
 
-    /// Glasses of water today (reminders and saving arrive in plan step 11).
-    public int Glasses { get; set; }
+    /// Glasses of water today.
+    public int Glasses => Water.Count;
+
+    /// Water: glasses today, reminders, the heads-up before one.
+    public global::Notchyyyy.Today.Water Water { get; } = new();
 
     /// The little Sprout's mood, most important first (the Mac's NotchBuddy).
     public Sprout.SproutMood BuddyMood(double now) =>

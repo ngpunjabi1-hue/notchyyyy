@@ -28,6 +28,12 @@ public sealed class NotchStage : Panel
     private readonly ShapeLayer _shape;
     private readonly Panel _barHost = new() { ClipToBounds = false };
     private readonly Panel _bodyHost = new() { ClipToBounds = false };
+    // the peek bubble's content: poured in like the open body, inside the swollen closed shape
+    private readonly Panel _peekHost = new() { ClipToBounds = false };
+    private readonly PeekBubble _peekView;
+    private readonly TweenValue _peekPour = new(1);
+    private bool _peekShown;
+    public PeekBubble Peek => _peekView;
     private readonly CollapsedBar _barView;
     private readonly Sprout.SproutView _buddy;
     public Sprout.SproutView Buddy => _buddy;
@@ -70,6 +76,8 @@ public sealed class NotchStage : Panel
         };
         _barHost.Children.Add(_buddy);
         _bodyHost.Children.Add(_bodyView);
+        _peekView = new PeekBubble(model, clock);
+        _peekHost.Children.Add(_peekView);
         // Hosts are never hidden with IsVisible: switching that back on re-lays-out the whole body at the
         // moment it opens (a dropped frame, measured). Opacity 0 isn't drawn, and keeps the layout ready.
         ShowBody(false);
@@ -77,6 +85,7 @@ public sealed class NotchStage : Panel
         Children.Add(_shape);
         Children.Add(_barHost);
         Children.Add(_bodyHost);
+        Children.Add(_peekHost);
         Children.Add(_pill);
 
         _m.Changed += OnChanged;
@@ -101,7 +110,8 @@ public sealed class NotchStage : Panel
     public bool Animating(double now) =>
         !(_w.IsSettled(now) && _h.IsSettled(now) && _top.IsSettled(now) && _bottom.IsSettled(now) && _fill.IsSettled(now)
           && _stroke.IsSettled(now) && _activity.IsSettled(now) && _bar.IsSettled(now) && _pour.IsSettled(now)
-          && _pillIn.IsSettled(now) && _pillFade.IsSettled(now) && !_pill.Animating(now) && !_bodyView.Animating(now));
+          && _pillIn.IsSettled(now) && _pillFade.IsSettled(now) && !_pill.Animating(now) && !_bodyView.Animating(now)
+          && _peekPour.IsSettled(now));
 
     private void Go(SpringValue s, double target, SpringSpec spec, double now)
     {
@@ -111,12 +121,13 @@ public sealed class NotchStage : Panel
     private void OnChanged(string what)
     {
         double now = _clock.Now;
-        bool e = _m.Expanded;
+        bool e = _m.Expanded, pk = _m.PeekShown;
         var closed = _m.ClosedSize;
-        double w = e ? _m.BodySize.Width : closed.Width;
-        double h = e ? _m.BodySize.Height : closed.Height;
-        double t = e ? 14 : 6;
-        double b = e ? 34 : (_m.Hovering ? 14 : 10);
+        // open, the body; a bubble, the peek size (rounder: 10 and 24, as on the Mac); otherwise the closed pill
+        double w = e ? _m.BodySize.Width : pk ? _m.PeekSize.Width : closed.Width;
+        double h = e ? _m.BodySize.Height : pk ? _m.PeekSize.Height : closed.Height;
+        double t = e ? 14 : pk ? 10 : 6;
+        double b = e ? 34 : pk ? 24 : (_m.Hovering ? 14 : 10);
 
         switch (what)
         {
@@ -151,7 +162,47 @@ public sealed class NotchStage : Panel
                     _bar.AnimateTo(1, 0.18, Ease.Out, now, 0.12);   // starts as the body finishes leaving (0.12 s)
                     _pillFade.AnimateTo(0, 0.10, Ease.In, now);
                 }
-                _pill.IsHitTestVisible = e;
+                _pill.IsHitTestVisible = e && _m.Onboarded;
+                break;
+            case nameof(NotchModel.Peeking):
+                _peekView.Refresh();
+                if (!e)
+                {
+                    var swell = pk ? LT.OpenWide : LT.CloseWide;
+                    var drop = pk ? LT.OpenTall : LT.CloseTall;
+                    Go(_w, w, swell, now);
+                    Go(_h, h, drop, now);
+                    Go(_top, t, drop, now);
+                    Go(_bottom, b, drop, now);
+                    if (pk)
+                    {
+                        if (!_peekShown) _peekPour.Snap(1);
+                        if (_peekPour.Target > 0.5) _peekPour.AnimateTo(0, 0.32, Ease.Out, now, 0.1);   // a bubble already up only changes its words
+                        _bar.AnimateTo(0, 0.10, Ease.Out, now);
+                    }
+                    else
+                    {
+                        _peekPour.AnimateTo(1, 0.12, Ease.In, now);
+                        _bar.AnimateTo(1, 0.18, Ease.Out, now, 0.12);
+                    }
+                }
+                else _peekPour.AnimateTo(1, 0.12, Ease.In, now);
+                _peekHost.IsHitTestVisible = pk;
+                break;
+            case nameof(NotchModel.Onboarded):
+                _bodyView.SetupChanged(now, animate: _bodyShown);
+                if (_m.Onboarded && e)
+                {
+                    // setup done: the tab bar arrives under the open notch, as it does on every open
+                    if (_pill.Opacity < 0.001) _pillIn.Snap(1);
+                    _pillIn.AnimateTo(0, new SpringSpec(0.45, 0.2, 0.14), now);
+                    _pillFade.Snap(1);
+                }
+                else if (!_m.Onboarded) _pillFade.AnimateTo(0, 0.10, Ease.In, now);
+                _pill.IsHitTestVisible = e && _m.Onboarded;
+                break;
+            case "Water":   // the heads-up ring before a reminder came or went
+                _barView.Refresh();
                 break;
             case nameof(NotchModel.Hovering):
                 Go(_w, w, LT.Hover, now);
@@ -303,6 +354,18 @@ public sealed class NotchStage : Panel
         if (_bodyView.CurrentMedia is { } media) media.Active = _bodyShown;
         if (_bodyView.CurrentSystem is { } system) system.Active = _bodyShown;
 
+        // the bubble's content
+        double pp = Math.Clamp(_peekPour.Value(now), 0, 1);
+        _peekShown = _m.PeekShown || pp < 0.999;
+        _peekHost.Opacity = _peekShown ? 1 : 0;
+        if (_peekShown)
+        {
+            double ps = 1 - pp * 0.04, phalf = _m.PeekSize.Width / 2;
+            _peekView.Opacity = 1 - pp;
+            _peekView.RenderTransform = new MatrixTransform(Matrix.CreateTranslation(-phalf, 0) * Matrix.CreateScale(ps, ps) * Matrix.CreateTranslation(phalf, -pp * 10));
+        }
+        _peekView.Active = _peekShown;
+
         UpdatePill(now);
         _bodyView.Update(now);
         UpdateClips();
@@ -359,6 +422,7 @@ public sealed class NotchStage : Panel
         double t = CurTop, b = CurBottom;
         if (_barShown) _barHost.Clip = NotchShape.Build(r.Translate(new Vector(-_barHost.Bounds.X, 0)), t, b);
         if (_bodyShown) _bodyHost.Clip = NotchShape.Build(r.Translate(new Vector(-_bodyHost.Bounds.X, 0)), t, b);
+        if (_peekShown) _peekHost.Clip = NotchShape.Build(r.Translate(new Vector(-_peekHost.Bounds.X, 0)), t, b);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -366,6 +430,7 @@ public sealed class NotchStage : Panel
         _shape.Measure(availableSize);
         _barHost.Measure(new Size(BarWidth, _m.NotchSize.Height));
         _bodyHost.Measure(_m.BodySize);
+        _peekHost.Measure(_m.PeekSize);
         _pill.Measure(availableSize);
         return availableSize;
     }
@@ -378,6 +443,7 @@ public sealed class NotchStage : Panel
         _shape.Arrange(new Rect(finalSize));
         _barHost.Arrange(new Rect(cx - BarWidth / 2, 0, BarWidth, _m.NotchSize.Height));
         _bodyHost.Arrange(new Rect(cx - _m.BodySize.Width / 2, 0, _m.BodySize.Width, _m.BodySize.Height));
+        _peekHost.Arrange(new Rect(cx - _m.PeekSize.Width / 2, 0, _m.PeekSize.Width, _m.PeekSize.Height));
         _pill.Arrange(PillHomeIn(finalSize.Width));   // finalSize: Bounds isn't updated yet during arrange
         UpdateClips();
         return finalSize;

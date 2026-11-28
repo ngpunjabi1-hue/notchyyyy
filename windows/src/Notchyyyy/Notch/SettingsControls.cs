@@ -144,15 +144,17 @@ public sealed class Swatches : SpringControl
     private int _hot = -1;
     private readonly Action<Accent> _set;
     private static readonly Accent[] All = Enum.GetValues<Accent>();
-    public Swatches(IClock clock, Action<Accent> set) : base(clock)
+    private readonly double _gap;
+    /// <paramref name="gap"/>: 8 pt in Settings, 3 pt in setup (where the row shares its line with the theme cards).
+    public Swatches(IClock clock, Action<Accent> set, double gap = 8) : base(clock)
     {
-        _set = set;
+        _set = set; _gap = gap;
         _hover = All.Select(_ => Spring(0)).ToArray();
-        Width = All.Length * 22 + (All.Length - 1) * 8; Height = 22;
+        Width = All.Length * 22 + (All.Length - 1) * gap; Height = 22;
         Cursor = new Cursor(StandardCursorType.Hand);
         VerticalAlignment = VerticalAlignment.Center;
     }
-    public Point Centre(int i) => new(11 + i * 30, 11);
+    public Point Centre(int i) => new(11 + i * (22 + _gap), 11);
     private int At(Point p) { for (int i = 0; i < All.Length; i++) if (Math.Abs(p.X - Centre(i).X) <= 11) return i; return -1; }
     protected override void OnPointerMoved(PointerEventArgs e)
     {

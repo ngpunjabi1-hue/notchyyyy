@@ -148,8 +148,9 @@ public sealed class ExpandedBody : Grid
         Children.Add(host);
 
         Showing = m.Tab;
-        _title.Show(Label(m.Tab.Title(), LT.Text), clock.Now, animate: false);
-        _content.Show(Content(m.Tab), clock.Now, animate: false);
+        _setup = !m.Onboarded;
+        _title.Show(Label(_setup ? "Welcome" : m.Tab.Title(), LT.Text), clock.Now, animate: false);
+        _content.Show(_setup ? (_onboarding = new OnboardingView(m, clock)) : Content(m.Tab), clock.Now, animate: false);
         UpdateTime();
         DispatcherTimer.Run(() => { UpdateTime(); return true; }, TimeSpan.FromSeconds(15));
     }
@@ -157,9 +158,25 @@ public sealed class ExpandedBody : Grid
     public Tab Showing { get; private set; }
 
     /// Cross-fades the header title and the content to <paramref name="tab"/>.
+    private bool _setup;
+    private OnboardingView? _onboarding;
+    /// The first-run setup, while it shows.
+    public OnboardingView? CurrentSetup => _content.Current as OnboardingView;
+
+    /// The setup finished (or is to run again): cross-fade between it and the tab.
+    public void SetupChanged(double now, bool animate)
+    {
+        bool setup = !_m.Onboarded;
+        if (setup == _setup) return;
+        _setup = setup;
+        Showing = _m.Tab;
+        _title.Show(Label(setup ? "Welcome" : _m.Tab.Title(), LT.Text), now, animate);
+        _content.Show(setup ? (_onboarding = new OnboardingView(_m, _clock)) : Content(_m.Tab), now, animate);
+    }
+
     public void SwitchTo(Tab tab, double now, bool animate = true)
     {
-        if (tab == Showing) return;
+        if (tab == Showing || _setup) { Showing = tab; return; }
         Showing = tab;
         _title.Show(Label(tab.Title(), LT.Text), now, animate);
         _content.Show(Content(tab), now, animate);

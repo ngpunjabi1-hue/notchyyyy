@@ -58,7 +58,7 @@ public sealed class HomeView : Canvas
         _subline.FontFamily = LT.Ui; _subline.FontSize = LT.TextSize(11.5); _subline.Foreground = new SolidColorBrush(LT.Muted);
         _water = new QuickAction(IconKind.Drop, "0", "Log a glass of water", clock, () =>
         {
-            m.Glasses++;
+            m.Water.Drank();
             m.Buddy.CheerUntil = clock.Now + 3;       // the little Sprout cheers
             Refresh();
         });
@@ -205,6 +205,7 @@ public sealed class HomeView : Canvas
         _greeting.Text = name.Length > 0 ? $"{Greeting(_m.Buddy.Hour())}, {name}" : Greeting(_m.Buddy.Hour());
         _subline.Text = now.ToString("ddd, d MMM", CultureInfo.CurrentCulture);     // "Sat, 28 Nov", as on the Mac
         _water.Title = _m.Glasses.ToString(CultureInfo.InvariantCulture);
+        _water.IsVisible = _m.Water.Enabled;       // only with water reminders on, as on the Mac
         _actions.Measure(Size.Infinity);
         double room = RightWidth - _actions.DesiredSize.Width - 12;
         double size = LT.TextSize(19);
