@@ -56,7 +56,10 @@ $desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Notchyyyy.lnk'
 Check 'no desktop shortcut' (-not (Test-Path $desktop))
 $entry = Get-ItemProperty $uninstallKey -ErrorAction SilentlyContinue
 Check 'listed in Settings > Apps, with its name' ($entry -and $entry.DisplayName -eq 'Notchyyyy') "$($entry.DisplayName) $($entry.DisplayVersion)"
-Check 'the installer starts Notchyyyy' (WaitFor { Get-Process Notchyyyy -ErrorAction SilentlyContinue } 15)
+# the quiet installer doesn't start the app (the one-line install below does): start it from the Start menu,
+# as a person would
+Start-Process -FilePath $shortcut
+Check 'it starts from the Start-menu shortcut' (WaitFor { Get-Process Notchyyyy -ErrorAction SilentlyContinue } 15)
 Start-Sleep -Seconds 3
 Shot 'installed-0.1.0.png'
 Get-Process Notchyyyy -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -101,7 +104,7 @@ Copy-Item (Join-Path $Releases '*') $serve -Recurse
 $server = Start-Process -FilePath python -ArgumentList '-m', 'http.server', '8765', '--bind', '127.0.0.1' -WorkingDirectory $serve -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 2
 $env:NOTCHYYYY_RELEASES = 'http://127.0.0.1:8765'
-$installOut = (irm http://127.0.0.1:8765/install.ps1 | iex) 2>&1 | Out-String
+$installOut = (irm http://127.0.0.1:8765/install.ps1 | iex) *>&1 | Out-String
 Info "install.ps1 said: $($installOut.Trim() -replace '\s+', ' ')"
 Check 'irm ... | iex installs Notchyyyy' (Test-Path $current) (Version $current)
 Check 'and starts it' (WaitFor { Get-Process Notchyyyy -ErrorAction SilentlyContinue } 15)

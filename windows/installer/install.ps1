@@ -29,6 +29,11 @@ try {
     Write-Host 'Installing...'
     $p = Start-Process -FilePath $setup -ArgumentList '--silent' -Wait -PassThru
     if ($p.ExitCode -ne 0) { throw "the installer stopped with code $($p.ExitCode)" }
+    # the quiet installer doesn't start the app: start it (through its launcher, as the Start menu does)
+    $root = Join-Path $env:LOCALAPPDATA 'Notchyyyy'
+    $exe = Join-Path $root 'Notchyyyy.exe'
+    if (-not (Test-Path $exe)) { $exe = Join-Path $root 'current\Notchyyyy.exe' }
+    Start-Process -FilePath $exe
 }
 catch {
     Write-Host "Notchyyyy couldn't be installed: $($_.Exception.Message)" -ForegroundColor Red
