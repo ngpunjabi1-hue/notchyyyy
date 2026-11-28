@@ -52,6 +52,23 @@ jobs:
           Get-Content "$env:RUNNER_TEMP/selftest/selftest-light.txt"
           exit $p.ExitCode
 
+      # Laptops usually run at 125-150 % scaling. Switch the runner's screen live, then repeat the self-test.
+      - name: Overlay self-test at 125 % (1920x1080)
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          ./ci/display.ps1 -Width 1920 -Height 1080 -Scale 125
+          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest/scale-125" -PassThru -Wait
+          Get-Content "$env:RUNNER_TEMP/selftest/scale-125/selftest-dark.txt"
+          exit $p.ExitCode
+
+      - name: Overlay self-test at 150 % (1920x1080)
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          ./ci/display.ps1 -Width 1920 -Height 1080 -Scale 150
+          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest/scale-150" -PassThru -Wait
+          Get-Content "$env:RUNNER_TEMP/selftest/scale-150/selftest-light.txt"
+          exit $p.ExitCode
+
       - name: Upload self-test screenshots and logs
         if: always()
         uses: actions/upload-artifact@v6
