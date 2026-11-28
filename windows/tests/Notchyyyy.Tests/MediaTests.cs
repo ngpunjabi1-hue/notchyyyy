@@ -64,13 +64,9 @@ public class MediaTests
 
         public WriteableBitmap Run(double until)
         {
-            WriteableBitmap? b = null;
-            for (double t = Clock.Now; t <= until + 1e-9; t += 1 / 30.0)
-            {
-                Clock.Now = t; Stage.Update(t);
-                b = Frame();
-            }
-            return b!;
+            // stepped frame by frame; only the last frame is drawn and captured (see AppsTests)
+            for (double t = Clock.Now; t <= until + 1e-9; t += 1 / 30.0) { Clock.Now = t; Stage.Update(t); Dispatcher.UIThread.RunJobs(); }
+            return Frame();
         }
 
         /// One frame at the test clock's time. Every live canvas is asked to draw it: their own pacing goes by real time

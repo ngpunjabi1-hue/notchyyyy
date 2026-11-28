@@ -57,9 +57,10 @@ public class AppsTests
         }
         public WriteableBitmap Run(double until)
         {
-            WriteableBitmap? b = null;
-            for (double t = Clock.Now; t <= until + 1e-9; t += 1 / 30.0) { Clock.Now = t; Stage.Update(t); b = Frame(); }
-            return b!;
+            // the animation is stepped frame by frame; only the last frame is drawn and captured (drawing every
+            // step made the suite five times slower on the Windows runner, for frames nothing looked at)
+            for (double t = Clock.Now; t <= until + 1e-9; t += 1 / 30.0) { Clock.Now = t; Stage.Update(t); Dispatcher.UIThread.RunJobs(); }
+            return Frame();
         }
         public WriteableBitmap Frame() { Dispatcher.UIThread.RunJobs(); return Win.CaptureRenderedFrame()!; }
         public AppsView View => Stage.Body.CurrentApps!;

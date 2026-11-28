@@ -1,4 +1,4 @@
-# Notchyyyy for Windows: build, run the tests, then check the overlay on a real Windows desktop.
+# Notchyyyy for Windows: the tests, and (at the same time, on another runner) the app checked on a real Windows desktop.
 name: Windows
 
 on:
@@ -31,15 +31,6 @@ jobs:
       - name: Build
         id: build
         run: dotnet build Notchyyyy.sln -c Release
-
-      - name: Tests (springs, hover rules, pixel-level frames)
-        id: tests
-        env:
-          NOTCHYYYY_FRAMES: ${{ runner.temp }}/frames
-        # each test is named as it finishes; one stuck for 4 minutes is stopped and named (blame-hang), so a hang can't
-        # silently eat the whole job
-        timeout-minutes: 30
-        run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --logger "console;verbosity=normal" --blame-hang --blame-hang-timeout 4m --results-directory "$env:RUNNER_TEMP/test-results"
 
       # The build users get: precompiled (ReadyToRun) for Windows x64. Self-tests and measurements use it.
       - name: Publish (ReadyToRun, as shipped)
@@ -129,6 +120,33 @@ jobs:
         with:
           name: selftest
           path: ${{ runner.temp }}/selftest
+
+  # The tests run in their own job, alongside the app checks, so neither waits for the other.
+  tests:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: windows
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        run: dotnet build Notchyyyy.sln -c Release
+
+      - name: Tests (springs, hover rules, pixel-level frames)
+        id: tests
+        env:
+          NOTCHYYYY_FRAMES: ${{ runner.temp }}/frames
+        # each test is named as it finishes; one stuck for 4 minutes is stopped and named (blame-hang), so a hang can't
+        # silently eat the whole job
+        timeout-minutes: 40
+        run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --logger "console;verbosity=normal" --blame-hang --blame-hang-timeout 4m --results-directory "$env:RUNNER_TEMP/test-results"
 
       - name: Upload test results and frames
         if: always()
