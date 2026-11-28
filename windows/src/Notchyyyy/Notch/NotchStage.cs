@@ -47,6 +47,7 @@ public sealed class NotchStage : Panel
     {
         _m = model; _clock = clock;
         model.Media.Clock = clock;
+        model.Stopwatch.Clock = clock;
         var c = model.ClosedSize;
         _w = new SpringValue(c.Width); _h = new SpringValue(c.Height);
         _top = new SpringValue(6); _bottom = new SpringValue(10);
@@ -64,7 +65,7 @@ public sealed class NotchStage : Panel
             Fps = 60, GazeFollowsMood = true, IsHitTestVisible = false,
             FpsOverride = double.TryParse(Debug.Value("--mini-fps"), System.Globalization.CultureInfo.InvariantCulture, out var mf) ? mf : null,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            Margin = new Thickness(18, 0, 0, 0), IsVisible = Prefs.Shared.Buddy,
+            Margin = new Thickness(18, 0, 0, 0), IsVisible = model.ShowsBuddy,
             Source = t => (model.BuddyMood(t), model.Buddy.Gaze, model.MusicPlaying, model.Buddy.Pace),
         };
         _barHost.Children.Add(_buddy);
@@ -164,7 +165,8 @@ public sealed class NotchStage : Panel
             case "MediaArt":   // new artwork or track: the pill's art and bar colour
                 _barView.Refresh();
                 break;
-            default:   // live activity came or went
+            default:   // live activity came or went (music, the stopwatch, Sprout switched)
+                _buddy.IsVisible = _m.ShowsBuddy;
                 _barView.Refresh();
                 Go(_w, w, LT.OpenWide, now);
                 Go(_activity, _m.Activity ? 1 : 0, LT.OpenWide, now);
@@ -190,7 +192,7 @@ public sealed class NotchStage : Panel
                 _pill.Refresh(now);
                 break;
             case nameof(Prefs.Buddy):
-                _buddy.IsVisible = Prefs.Shared.Buddy;
+                _buddy.IsVisible = _m.ShowsBuddy;
                 OnChanged("Activity");
                 break;
             case nameof(Prefs.LiveActivity):

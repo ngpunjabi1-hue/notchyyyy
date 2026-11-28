@@ -514,6 +514,70 @@ public static class WinSelfTest
                 Keys(0x1B);
                 await Wait(0.8);
             }
+            // ---- step 9: Today and the stopwatch ----
+            {
+                sh.Model.Tab = Tab.Today;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.2);
+                var tv = sh.Stage.Body.CurrentToday;
+                Check("opens on the Today tab", tv is not null);
+                if (tv is not null)
+                {
+                    var ip = tv.Input.TranslatePoint(new Point(40, tv.Input.Bounds.Height / 2), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(ip.X), rc.T + Px(ip.Y));
+                    await Wait(0.2);
+                    Click();
+                    await Wait(0.4);
+                    Check("clicking the composer gives it the keyboard", tv.Input.IsFocused);
+                    Type("Self-test call at 11:59pm");
+                    Keys(0x0D);
+                    await Wait(0.6);
+                    var added = sh.Model.Tasks.Today.FirstOrDefault(t => t.Title == "Self-test call");
+                    Check("typing a task with a time adds it, time understood", added?.Time is { Hour: 23, Minute: 59 }, $"{added?.Title} {added?.Time}");
+                    Save(Capture(), Path.Combine(dir, $"{theme}-13-today.png"));
+#if WINDOWS
+                    // a real Windows notification, as a due reminder sends it
+                    var reminders = new WinReminders();
+                    Check("Windows notifications are available to Notchyyyy", reminders.Available);
+                    if (added is not null && reminders.Available)
+                    {
+                        reminders.Show(added);
+                        await Wait(1.0);
+                        var history = WinReminders.History();
+                        Check("a reminder reaches Windows' notification centre", history.Contains(added.Id.ToString("N")[..16]), string.Join(",", history));
+                        Save(Capture(), Path.Combine(dir, $"{theme}-14-reminder.png"));
+                    }
+#endif
+                    if (added is not null) sh.Model.Tasks.Delete(added);
+                }
+                // the stopwatch, by its keys
+                sh.Model.Tab = Tab.Stopwatch;
+                await Wait(0.8);
+                var sv = sh.Stage.Body.CurrentStopwatch;
+                if (sv is not null)
+                {
+                    var bp = sv.RightButton.TranslatePoint(new Point(38, 18), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(bp.X), rc.T + Px(bp.Y));
+                    await Wait(0.2);
+                    Click();
+                    await Wait(1.3);
+                    Keys(0x4C);   // L
+                    await Wait(0.7);
+                    Keys(0x20);   // Space
+                    await Wait(0.3);
+                    var watch = sh.Model.Stopwatch;
+                    Check("Start, L and Space run the stopwatch and take a lap", !watch.Running && watch.Laps.Count == 1 && watch.Elapsed() is > 1.6 and < 3.5, $"{watch.Elapsed():0.00} s, {watch.Laps.Count} laps");
+                    Save(Capture(), Path.Combine(dir, $"{theme}-15-stopwatch.png"));
+                    Keys(0x20);   // running again: the closed pill shows the time
+                    Keys(0x1B);
+                    await Wait(1.6);
+                    Check("while it runs, the closed pill shows its time", watch.Running && sh.Model.Timing && !sh.Model.Expanded);
+                    Save(Capture(), Path.Combine(dir, $"{theme}-16-pill-stopwatch.png"));
+                    watch.Reset();
+                }
+                Keys(0x1B);
+                await Wait(0.8);
+            }
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }

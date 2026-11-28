@@ -80,6 +80,12 @@ public sealed class Shell
             : new Clipboard.MemoryClipboard());
         // apps: the Start menu on Windows; a stand-in list on the Mac preview
         Model.Apps.Start(OperatingSystem.IsWindows() ? new Platform.WinApps() : new Apps.SampleCatalog());
+        // task reminders: Windows notifications (remembered only, on the Mac preview)
+#if WINDOWS
+        Model.Tasks.Start(new Platform.WinReminders());
+#else
+        Model.Tasks.Start(new Today.MemoryReminders());
+#endif
         // Grayscale text smoothing, as on the Mac: Windows' default sub-pixel (ClearType) smoothing left red/blue
         // fringes on the text (seen on the Windows runner), and fringes turn into halos when text fades over a transparent window.
         TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);

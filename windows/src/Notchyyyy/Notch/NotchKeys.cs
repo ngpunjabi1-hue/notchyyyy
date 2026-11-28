@@ -19,6 +19,8 @@ public static class NotchKeys
             var tabs = m.VisibleTabs;
             if (n < tabs.Count) { m.Tab = tabs[n]; return true; }
         }
+        // the Stopwatch tab's keys: Space start / stop, L lap, R reset
+        if (m.Tab == Tab.Stopwatch && mods == KeyModifiers.None && StopwatchView.HandleKey(m.Stopwatch, key)) return true;
         return false;
     }
 }

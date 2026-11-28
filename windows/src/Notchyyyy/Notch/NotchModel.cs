@@ -103,6 +103,10 @@ public sealed class NotchModel
     /// The pinned apps and every Start-menu app (a stand-in list on the Mac preview).
     public global::Notchyyyy.Apps.Favorites Apps { get; } = new();
 
+    /// The day's tasks (Today) and the stopwatch.
+    public global::Notchyyyy.Today.Tasks Tasks { get; } = new();
+    public global::Notchyyyy.Today.StopwatchModel Stopwatch { get; } = new(new Motion.SystemClock());
+
     public NotchModel()
     {
         Media = new global::Notchyyyy.Media.MediaPlayer(new Motion.SystemClock());
@@ -112,6 +116,8 @@ public sealed class NotchModel
             // the pill shows the artwork and its colour
             if (what is "Art" or "Track") Changed?.Invoke("MediaArt");
         };
+        // the stopwatch's time shows in the closed pill while it runs
+        Stopwatch.Changed += () => Changed?.Invoke("Stopwatch");
     }
 
     /// Music is playing (follows <see cref="Media"/>; tests may set it directly).
@@ -129,11 +135,15 @@ public sealed class NotchModel
     /// A menu is open: its items can sit outside the notch, so don't collapse.
     public bool MenuOpen { get; set; }
 
-    public bool LiveActivity => Prefs.Shared.LiveActivity && MusicPlaying;
+    public bool LiveActivity => Prefs.Shared.LiveActivity && (MusicPlaying || Stopwatch.Running);
+    /// The stopwatch runs and live activities are on: its icon and time take the pill (the Mac's CollapsedBar.timing).
+    public bool Timing => Prefs.Shared.LiveActivity && Stopwatch.Running;
+    /// Sprout sits in the pill unless the stopwatch's icon needs the place.
+    public bool ShowsBuddy => Prefs.Shared.Buddy && !Timing;
     /// something shows in the closed pill: a live activity, or Sprout
     public bool Activity => LiveActivity || Prefs.Shared.Buddy;
     /// room the live activity needs beside the pill's centre
-    public double Extra => 92;
+    public double Extra => Timing ? 124 : 92;   // the time needs a little more room than an icon
 
     /// The closed pill's size (it swells a little under the pointer).
     public Size ClosedSize => new(NotchSize.Width + 12 + (Activity ? Extra : 0) + (Hovering ? 16 : 0),

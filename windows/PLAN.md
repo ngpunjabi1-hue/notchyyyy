@@ -17,7 +17,7 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 6 ✅ (awaiting your OK) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
 | 7 (in review) | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
 | 8 (in review) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
-| 9 | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
+| 9 (in review) | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
 | 10 | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
 | 11 | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
 | 12 | **Installer + auto-updates**: Velopack releases, one-line PowerShell installer (`irm … | iex`), data kept across updates. | Install, update and uninstall on the runner; final check on your laptop. Nothing is published until you say so, and I'll ask which repo first. |
@@ -61,6 +61,10 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
   shell:AppsFolder, and show the shell's own icons. Default pins are Windows' counterparts of the Mac's (File
   Explorer, Edge, Media Player, Notepad, Terminal, Settings — whichever exist). Pins are kept in
   %APPDATA%\Notchyyyy\apps.json. Not yet: dropping a shortcut onto the shelf, and the right-click menu — follow-ups.
+- **Today on Windows**: reminders are Windows notifications. Notchyyyy registers its own notification identity in the
+  user's registry (as unpackaged apps do), so they work before the installer exists. Times in a task's title are
+  found by Notchyyyy's own reader ("5pm", "5:30 pm", "17:00", "at 5", "noon"; the Mac uses its date detector); the
+  time field is a compact HH:mm field (click the hours or minutes, then arrows, the wheel or digits).
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

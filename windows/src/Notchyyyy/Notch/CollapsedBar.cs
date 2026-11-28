@@ -31,7 +31,7 @@ public sealed class CollapsedBar : Control
 
     private void Tick()
     {
-        if (_ticking || !_live || !_m.MusicPlaying) return;
+        if (_ticking || !_live || !(_m.MusicPlaying || _m.Timing)) return;
         var top = TopLevel.GetTopLevel(this);
         if (top is null) return;
         _ticking = true;
@@ -49,6 +49,16 @@ public sealed class CollapsedBar : Control
         double h = Bounds.Height, inset = 6 + 12;   // the bar's padding, then inset from the rounded ends
         double now = _clock.Now;
 
+        if (_m.Timing)
+        {
+            // the stopwatch: its icon on the left, the time ("2:05") on the right
+            Icons.Draw(ctx, IconKind.Stopwatch, new Point(inset + 12, h / 2), 13, LT.AccentOf(Prefs.Shared.Accent));
+            var t = new FormattedText(Today.StopwatchModel.Format(_m.Stopwatch.Elapsed(now), centis: false), System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface(LT.Ui, FontStyle.Normal, FontWeight.SemiBold), 11.5, new SolidColorBrush(Color.FromRgb(235, 235, 235)));
+            ctx.DrawText(t, new Point(Bounds.Width - inset - t.Width, h / 2 - t.Height / 2));
+            Tick();
+            return;
+        }
         var media = _m.Media;
         var a = media.HasTrack ? media.Tint : LT.AccentOf(Prefs.Shared.Accent);
         // leading: the artwork (or a note without one), unless Sprout sits there

@@ -81,6 +81,7 @@ public sealed class HomeView : Canvas
         header.Children.Add(words);
 
         _m2 = m;
+        _todayRow = new GlanceRow(IconKind.Today, "Nothing planned today", "Add a task in Today", clock, () => m.Tab = Tab.Today);
         _clipRow = new GlanceRow(IconKind.Clipboard, "Nothing copied yet", "What you copy is kept here", clock, () => m.Tab = Tab.Clipboard);
         _mediaRow = new GlanceRow(IconKind.Note, "Nothing playing", "Spotify, Media Player or YouTube", clock, () => m.Tab = Tab.Media);
         // the Mac's MusicBars before the chevron while something plays (drawn on the render thread)
@@ -96,7 +97,7 @@ public sealed class HomeView : Canvas
             Children =
             {
                 new Panel { Children = { _mediaRow, _mediaBars } },
-                new GlanceRow(IconKind.Today, "Nothing planned today", "Add a task in Today", clock, () => m.Tab = Tab.Today),
+                _todayRow,
                 _clipRow,
             },
         };
@@ -112,7 +113,20 @@ public sealed class HomeView : Canvas
     private readonly StackPanel _actions;
     private IDisposable? _timer;
     private readonly NotchModel _m2;
-    private readonly GlanceRow _mediaRow, _clipRow;
+    private readonly GlanceRow _mediaRow, _clipRow, _todayRow;
+    public GlanceRow TodayRow => _todayRow;
+
+    /// The Today row (the Mac's): what's next, or how the day stands.
+    private void OnTasks(string what, Today.DayTask? t)
+    {
+        var tasks = _m2.Tasks;
+        var today = tasks.Today;
+        var next = tasks.NextUp;
+        _todayRow.Title = next?.Title ?? (today.Count == 0 ? "Nothing planned today" : "All timed tasks done");
+        _todayRow.Detail = today.Count == 0 ? "Add a task in Today"
+            : $"{tasks.DoneCount} of {today.Count} done" + (next?.Time is { } at ? " · " + Today.Tasks.ShortTime(at) : "");
+        _todayRow.InvalidateVisual();
+    }
     public GlanceRow ClipRow => _clipRow;
 
     /// The clipboard row: the newest copy, its kind and how long ago.
@@ -154,7 +168,9 @@ public sealed class HomeView : Canvas
         OnMedia("");
         _m2.Clips.Changed += OnClips;
         OnClips("", null);
-        _timer ??= DispatcherTimer.Run(() => { Refresh(); OnClips("", null); return true; }, TimeSpan.FromSeconds(20));
+        _m2.Tasks.Changed += OnTasks;
+        OnTasks("", null);
+        _timer ??= DispatcherTimer.Run(() => { Refresh(); OnClips("", null); OnTasks("", null); return true; }, TimeSpan.FromSeconds(20));
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -162,6 +178,7 @@ public sealed class HomeView : Canvas
         _timer?.Dispose(); _timer = null;
         _m2.Media.Changed -= OnMedia;
         _m2.Clips.Changed -= OnClips;
+        _m2.Tasks.Changed -= OnTasks;
     }
 
     public bool Refreshing => _timer is not null;
