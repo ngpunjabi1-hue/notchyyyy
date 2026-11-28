@@ -588,13 +588,22 @@ public static class WinSelfTest
                 Log($"INFO chip '{sys.Chip}', graphics '{sys.GpuName}'");
                 // busy every core for 3 s: the CPU reading must rise with it
                 double calm = sys.Cpu;
+                // (on threads of their own, below normal priority: busy work on the shared pool held up the reading's own
+                // timer on a 4-core runner, so no new reading came — the test's fault, not the app's)
                 using (var stop = new CancellationTokenSource(TimeSpan.FromSeconds(3.2)))
                 {
-                    var spin = Enumerable.Range(0, Environment.ProcessorCount).Select(_ => Task.Run(() => { double x = 0; while (!stop.IsCancellationRequested) x += Math.Sqrt(x + 1); return x; })).ToArray();
+                    var spin = Enumerable.Range(0, Environment.ProcessorCount).Select(_ =>
+                    {
+                        var t = new Thread(() => { double x = 0; while (!stop.IsCancellationRequested) x += Math.Sqrt(x + 1); })
+                            { IsBackground = true, Priority = ThreadPriority.BelowNormal };
+                        t.Start();
+                        return t;
+                    }).ToList();
+                    int before = sys.Samples;
                     await Wait(2.8);
                     double busy = sys.Cpu;
-                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm, $"calm {calm:P0}, busy {busy:P0}");
-                    await Task.WhenAll(spin);
+                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm && sys.Samples > before, $"calm {calm:P0}, busy {busy:P0}, {sys.Samples - before} readings meanwhile");
+                    foreach (var t in spin) t.Join();
                 }
                 sh.Model.Tab = Tab.System;
                 SetCursorPos(pill.X, pill.Y);
