@@ -133,7 +133,7 @@ public sealed class HomeView : Canvas
     /// the date, and the water count.
     public void Refresh()
     {
-        var now = DateTime.Now;
+        var now = global::Notchyyyy.Theme.Wall.Now();
         string name = _m.FirstName;
         _greeting.Text = name.Length > 0 ? $"{Greeting(_m.Buddy.Hour())}, {name}" : Greeting(_m.Buddy.Hour());
         _subline.Text = now.ToString("ddd, d MMM", CultureInfo.CurrentCulture);     // "Sat, 28 Nov", as on the Mac

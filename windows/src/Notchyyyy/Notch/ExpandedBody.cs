@@ -146,7 +146,7 @@ public sealed class ExpandedBody : Grid
         FontSize = LT.TextSize(12), FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center,
     };
 
-    private void UpdateTime() => _time.Text = DateTime.Now.ToString("HH:mm");
+    private void UpdateTime() => _time.Text = global::Notchyyyy.Theme.Wall.Now().ToString("HH:mm");
 }
 
 /// Draws one icon centred in its bounds.

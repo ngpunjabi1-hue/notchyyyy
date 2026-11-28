@@ -49,7 +49,7 @@ public sealed class BuddyState
     public bool Away { get; set; } = Theme.Debug.Has("--fake-away");
     public double WakeUntil { get; set; } = double.NegativeInfinity;
     /// The hour of the day (a test can pin it).
-    public Func<int> Hour { get; set; } = () => DateTime.Now.Hour;
+    public Func<int> Hour { get; set; } = () => Theme.Wall.Now().Hour;
 }
 
 /// The state the notch is drawn from. Views listen to <see cref="Changed"/>.

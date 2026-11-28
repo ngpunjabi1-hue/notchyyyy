@@ -5,6 +5,13 @@ using Notchyyyy.Motion;
 namespace Notchyyyy.Theme;
 
 /// Test-only launch flags: they never change saved data.
+/// The wall-clock time shown to people (the header clock, the date, the greeting). Tests freeze it so a minute
+/// ticking over mid-test can't change the pixels.
+public static class Wall
+{
+    public static Func<DateTime> Now { get; set; } = () => DateTime.Now;
+}
+
 public static class Debug
 {
     public static string[] Args { get; set; } = Environment.GetCommandLineArgs();
