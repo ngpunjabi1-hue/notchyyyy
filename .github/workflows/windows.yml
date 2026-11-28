@@ -189,6 +189,20 @@ jobs:
         shell: powershell
         run: ./ci/installer-test.ps1 -Releases "$env:RUNNER_TEMP\releases" -Next "$env:RUNNER_TEMP\pub\0.1.1" -Vpk (Get-Command vpk).Source -Out "$env:RUNNER_TEMP\installer" -Icon "$PWD\src\Notchyyyy\Assets\notchyyyy.ico"
 
+      - name: Installer for a laptop test (a download from this run; nothing is published)
+        if: success()
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP/laptop" | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/releases/Notchyyyy-win-Setup.exe" "$env:RUNNER_TEMP/laptop/"
+          Copy-Item ci/laptop/* "$env:RUNNER_TEMP/laptop/"
+
+      - name: Upload the laptop installer
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Notchyyyy-windows-installer
+          path: ${{ runner.temp }}/laptop
+
       - name: Upload installer test results
         if: always()
         uses: actions/upload-artifact@v6
