@@ -82,6 +82,9 @@ public sealed class Prefs
     /// The first-run setup is finished (`--sample` counts as set up; `--onboarding` shows the setup anyway).
     public bool Onboarded { get => _onboarded; set => Set(ref _onboarded, value); }
     private bool _onboarded;
+    /// The version that ran last (an update shows a small "Updated to …" bubble once).
+    public string LastRunVersion { get => _lastRun; set => Set(ref _lastRun, value); }
+    private string _lastRun = "";
 
     public double HoverDelay => HoverSpeed switch { HoverSpeed.Instant => 0.03, HoverSpeed.Relaxed => 0.35, _ => 0.12 };
 

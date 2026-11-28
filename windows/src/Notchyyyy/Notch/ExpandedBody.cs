@@ -82,6 +82,16 @@ public sealed class BlurSwap : Panel
 public sealed class ExpandedBody : Grid
 {
     private readonly TextBlock _time;
+    private readonly UpdateChip _updateChip;
+    public UpdateChip UpdateChip => _updateChip;
+
+    /// An update downloaded (or went): the chip in the header.
+    public void RefreshUpdate()
+    {
+        var v = _m.Updater?.Available;
+        _updateChip.IsVisible = v is not null;
+        if (v is not null) _updateChip.Set(v);
+    }
     private readonly BlurSwap _title = new();
     private readonly BlurSwap _content = new();
     private readonly NotchModel _m;
@@ -130,6 +140,8 @@ public sealed class ExpandedBody : Grid
             Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
             Children = { Label("Notchyyyy", LT.Faint), Label("/", LT.Faint), _title },
         };
+        _updateChip = new UpdateChip(clock, () => _m.Updater?.InstallNow()) { IsVisible = m.Updater?.Available is not null };
+        if (m.Updater?.Available is { } waiting) _updateChip.Set(waiting);
         _time = new TextBlock
         {
             FontFamily = LT.Mono, FontSize = LT.TextSize(11), Foreground = new SolidColorBrush(LT.Muted),
@@ -139,7 +151,7 @@ public sealed class ExpandedBody : Grid
         {
             Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { _time, new IconView(IconKind.More, 13, LT.Muted) { Width = 22, Height = 18 } },
+            Children = { _updateChip, _time, new IconView(IconKind.More, 13, LT.Muted) { Width = 22, Height = 18 } },
         };
         Children.Add(new Grid { Margin = new Thickness(14 + 18, 0), Children = { crumbs, right } });
 
@@ -225,5 +237,39 @@ public sealed class TabPlaceholder : StackPanel
             Text = $"Arrives in step {tab.Step()}", FontFamily = LT.Ui, FontSize = LT.TextSize(11),
             Foreground = new SolidColorBrush(LT.Faint), HorizontalAlignment = HorizontalAlignment.Center,
         });
+    }
+}
+
+/// "Update 0.2.0" in the open notch's header (the Mac's UpdateChip): installs now; otherwise it installs by itself
+/// once the notch is idle.
+public sealed class UpdateChip : SpringControl
+{
+    private readonly Action _install;
+    private readonly SpringValue _hover;
+    private string _version = "";
+    public UpdateChip(IClock clock, Action install) : base(clock)
+    {
+        _install = install; _hover = Spring(0);
+        Height = 20; Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand); VerticalAlignment = VerticalAlignment.Center;
+    }
+    public string Title => $"Update {_version}";
+    public void Set(string version)
+    {
+        _version = version;
+        ToolTip.SetTip(this, $"Notchyyyy {version} is ready: it installs by itself when the notch is idle, or click to install now");
+        InvalidateMeasure(); InvalidateVisual();
+    }
+    protected override Size MeasureOverride(Size available) => new(8 + 14 + Text(Title, 10.5, Colors.White, FontWeight.SemiBold).Width + 8, 20);
+    protected override void OnPointerEntered(Avalonia.Input.PointerEventArgs e) { base.OnPointerEntered(e); Go(_hover, 1, LT.Hover); }
+    protected override void OnPointerExited(Avalonia.Input.PointerEventArgs e) { base.OnPointerExited(e); Go(_hover, 0, LT.Hover); }
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e) { base.OnPointerPressed(e); e.Handled = true; }
+    protected override void OnPointerReleased(Avalonia.Input.PointerReleasedEventArgs e) { base.OnPointerReleased(e); if (new Rect(Bounds.Size).Contains(e.GetPosition(this))) _install(); }
+    public override void Render(DrawingContext ctx)
+    {
+        double h = V(_hover.Value(Now));
+        ctx.DrawRectangle(new SolidColorBrush(LT.AccentColor.WithOpacity(0.85 + 0.15 * h)), null, new Rect(Bounds.Size), 10, 10);
+        Icons.Draw(ctx, IconKind.Download, new Point(8 + 5, 10), 11, Colors.White);
+        var t = Text(Title, 10.5, Colors.White, FontWeight.SemiBold);
+        ctx.DrawText(t, new Point(8 + 14, 10 - t.Height / 2));
     }
 }

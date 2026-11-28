@@ -152,6 +152,9 @@ public sealed class NotchModel
     public global::Notchyyyy.Today.Tasks Tasks { get; } = new();
     public global::Notchyyyy.Today.StopwatchModel Stopwatch { get; } = new(new Motion.SystemClock());
 
+    /// Automatic updates (set by the shell; null in tests).
+    public global::Notchyyyy.Updates.Updater? Updater { get; set; }
+
     /// CPU, GPU, memory and storage (Windows' counters; a calm stand-in on the Mac preview).
     public global::Notchyyyy.SystemInfo.SystemMonitor System { get; } = new();
 

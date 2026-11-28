@@ -201,6 +201,9 @@ public sealed class NotchStage : Panel
                 else if (!_m.Onboarded) _pillFade.AnimateTo(0, 0.10, Ease.In, now);
                 _pill.IsHitTestVisible = e && _m.Onboarded;
                 break;
+            case "Update":   // an update is waiting (or not): the header chip
+                _bodyView.RefreshUpdate();
+                break;
             case "Water":   // the heads-up ring before a reminder came or went
                 _barView.Refresh();
                 break;

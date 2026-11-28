@@ -190,8 +190,17 @@ public sealed class SettingsView : Grid
 
         var version = typeof(SettingsView).Assembly.GetName().Version;
         var identity = new DockPanel { LastChildFill = true };
-        var check = new PillButton(_clock, "Check for Updates", IconKind.Download, null) { Enabled = false };
-        ToolTip.SetTip(check, "Updates arrive in step 12");
+        var updater = _m.Updater;
+        PillButton? check = null;
+        check = new PillButton(_clock, "Check for Updates", IconKind.Download, async () =>
+        {
+            if (updater is null) return;
+            check!.SetTitle("Checking…", IconKind.Download);
+            var said = await updater.CheckNow();
+            check.SetTitle(said, IconKind.Download);
+            Avalonia.Threading.DispatcherTimer.RunOnce(() => check.SetTitle("Check for Updates", IconKind.Download), TimeSpan.FromSeconds(3));
+        }) { Enabled = updater?.Enabled == true };
+        ToolTip.SetTip(check, updater?.Enabled == true ? "Updates also install by themselves while the notch is idle" : "Updates arrive once Notchyyyy is installed");
         DockPanel.SetDock(check, Dock.Right);
         identity.Children.Add(check);
         identity.Children.Add(new StackPanel

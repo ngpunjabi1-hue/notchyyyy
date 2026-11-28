@@ -157,3 +157,43 @@ jobs:
             ${{ runner.temp }}/test-results
             ${{ runner.temp }}/frames/open-close-dark-60
             ${{ runner.temp }}/frames/open-close-light-60
+
+  # Installing and updating, as people will: the installer (quietly), an update found and installed by the app
+  # itself, uninstalling, and the one-line PowerShell install. Releases stay a local folder: nothing is published.
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: windows
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish 0.1.0 and 0.1.1 (self-contained, as released)
+        run: |
+          dotnet publish src/Notchyyyy/Notchyyyy.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:Version=0.1.0 -o "$env:RUNNER_TEMP/pub/0.1.0"
+          dotnet publish src/Notchyyyy/Notchyyyy.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:Version=0.1.1 -o "$env:RUNNER_TEMP/pub/0.1.1"
+
+      - name: Velopack's packer
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      - name: Pack 0.1.0 (installer and package)
+        run: vpk pack -u Notchyyyy -v 0.1.0 -p "$env:RUNNER_TEMP/pub/0.1.0" -e Notchyyyy.exe --packTitle Notchyyyy --packAuthors Notchyyyy -i src/Notchyyyy/Assets/notchyyyy.ico --shortcuts StartMenuRoot --aumid Notchyyyy.Notchyyyy -o "$env:RUNNER_TEMP/releases" --skip-updates
+
+      - name: Install, update, uninstall, one-line install (Windows PowerShell 5.1, as people have)
+        shell: powershell
+        run: ./ci/installer-test.ps1 -Releases "$env:RUNNER_TEMP\releases" -Next "$env:RUNNER_TEMP\pub\0.1.1" -Vpk (Get-Command vpk).Source -Out "$env:RUNNER_TEMP\installer" -Icon "$PWD\src\Notchyyyy\Assets\notchyyyy.ico"
+
+      - name: Upload installer test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installer
+          path: |
+            ${{ runner.temp }}/installer
+            ${{ runner.temp }}/releases/*.json

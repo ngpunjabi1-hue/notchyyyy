@@ -18,6 +18,8 @@ public static class Program
     public static void Main(string[] args)
     {
         Theme.Debug.Args = args;
+        // first: Velopack's install / update / uninstall hooks (they may run and exit before any window)
+        Updates.Updater.RunHooks(args);
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -156,6 +158,23 @@ public sealed class Shell
         DispatcherTimer.Run(() => { if (Model.Water.DueSoon != soon) { soon = !soon; Model.Notify("Water"); } return true; }, TimeSpan.FromSeconds(2));
         Model.Water.Changed += _ => Model.Notify("Water");
         if (Theme.Debug.Has("--peek")) DispatcherTimer.RunOnce(Remind, TimeSpan.FromSeconds(1.5));
+
+        // updates: install only when nobody is using the notch
+        var updater = new Updates.Updater
+        {
+            IsIdle = () => !Model.Expanded && !Model.Hovering && Model.Peeking == Notch.Peek.None && !Model.Stopwatch.Running,
+        };
+        Model.Updater = updater;
+        updater.Changed += _ => Model.Notify("Update");
+        bool wasAway = false;
+        Senses.Changed += () => { if (Model.Buddy.Away && !wasAway) updater.SteppedAway(); wasAway = Model.Buddy.Away; };
+        updater.Start();
+        // after an update: a small bubble says so (once)
+        var from = Updates.Updater.UpdatedFrom();
+        if ((from is not null && Model.Onboarded && !Theme.Debug.Sample) || Theme.Debug.Has("--peek-updated"))
+            DispatcherTimer.RunOnce(() => Model.ShowPeek(Notch.Peek.Updated, Clock.Now, 4), TimeSpan.FromSeconds(1.5));
+        if (from is not null && Theme.Debug.Value("--update-log") is { } ul)
+            try { File.AppendAllText(ul, $"{DateTime.Now:HH:mm:ss} running {Updates.Updater.CurrentVersion} after an update from {from}{Environment.NewLine}"); } catch { }
 
         // first launch: open on the setup, and stay open until it's finished
         if (!Model.Onboarded && !Theme.Debug.Has("--open"))

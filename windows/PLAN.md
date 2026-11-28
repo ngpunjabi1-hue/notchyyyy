@@ -19,8 +19,8 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 | 8 ✅ (awaiting your OK) | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
 | 9 ✅ (awaiting your OK) | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
 | 10 ✅ (awaiting your OK) | **System** (CPU, GPU, RAM, disk via performance counters). | Runner reading real counters; stand-in values on the Mac. |
-| 11 (in review) | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
-| 12 | **Installer + auto-updates**: Velopack releases, one-line PowerShell installer (`irm … | iex`), data kept across updates. | Install, update and uninstall on the runner; final check on your laptop. Nothing is published until you say so, and I'll ask which repo first. |
+| 11 ✅ (awaiting your OK) | **Onboarding** (five steps), **hydration reminders + peek bubble**, idle time and typing pace (counts only, never which keys). | Onboarding self-test; `--peek`, `--fake-typing`, `--fake-away`. |
+| 12 (in review) | **Installer + auto-updates**: Velopack releases, one-line PowerShell installer (`irm … | iex`), data kept across updates. | Install, update and uninstall on the runner; final check on your laptop. Nothing is published until you say so, and I'll ask which repo first. |
 
 ## Release 2
 Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Codex, Gemini CLIs), the games Hop and Drop (original designs), screenshot and screen recording.
@@ -74,6 +74,13 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
   second is typing, a minute without input is away.
 - **The setup's last tip** is "Ctrl+1…9 switch tabs, Esc closes" (the Mac's voice-note shortcut arrives with voice
   notes in release 2).
+- **Installing and updating (Velopack, in place of the Mac's Sparkle)**: per-user, no administrator rights, into
+  %LocalAppData%\Notchyyyy; a Start-menu shortcut (no desktop icon) and an entry in Settings › Apps. The one-line
+  install is `irm https://github.com/<repo>/releases/latest/download/install.ps1 | iex`. The update feed is baked in
+  when a release is built (`-p:NotchUpdateFeed=https://github.com/<repo>`); until then it's empty and the app never
+  looks. Updates follow the Mac's rhythm (launch, hourly, stepping away; install after 15 s idle; "Updated to …"
+  bubble). Unsigned: nothing is code-signed yet, so a browser download of Setup.exe would show SmartScreen's
+  warning; the PowerShell line doesn't (it doesn't mark the download as from the internet).
 - **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
   Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 

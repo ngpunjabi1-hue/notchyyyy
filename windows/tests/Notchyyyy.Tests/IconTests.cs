@@ -65,3 +65,24 @@ public class IconTests
         }
     }
 }
+
+/// The app's own icon (the exe, the Start-menu shortcut, the installer): Sprout, happy, on the accent.
+public class AppIconTests
+{
+    [Fact]
+    public void AppIconRenders()
+    {
+        var dir = Path.Combine(Environment.GetEnvironmentVariable("NOTCHYYYY_FRAMES") ?? Path.GetTempPath(), "app-icon");
+        Directory.CreateDirectory(dir);
+        using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(512, 512));
+        surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+        Notchyyyy.Sprout.SproutPainter.Draw(surface.Canvas, new Avalonia.Rect(-70, -40, 652, 652),
+            Notchyyyy.Sprout.SproutPose.For(Notchyyyy.Sprout.SproutMood.Happy, 0), 0, default, 0, drawShadow: false, deviceScale: 1);
+        using var img = surface.Snapshot();
+        using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        File.WriteAllBytes(Path.Combine(dir, "app-icon-512.png"), data.ToArray());
+        using var bmp = SkiaSharp.SKBitmap.FromImage(img);
+        Assert.True(bmp.GetPixel(256, 300).Alpha > 200, "Sprout not drawn");
+        Assert.True(bmp.GetPixel(256, 40).Alpha < 255 && bmp.GetPixel(256, 470).Alpha > 200, "Sprout should fill the icon, top to bottom");
+    }
+}

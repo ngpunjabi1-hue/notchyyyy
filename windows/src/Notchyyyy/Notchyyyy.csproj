@@ -7,6 +7,7 @@
     <RootNamespace>Notchyyyy</RootNamespace>
     <Version>0.1.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\notchyyyy.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
@@ -15,6 +16,13 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
     <!-- SVG icons copied to the clipboard (built on the same SkiaSharp 3.119 as Avalonia 12) -->
     <PackageReference Include="Svg.Skia" Version="4.9.1" />
+    <!-- installing and updating (per-user, no administrator rights); a no-op on the Mac preview -->
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- where updates come from: set when a release is built (-p:NotchUpdateFeed=https://github.com/owner/repo);
+         empty, the app never looks -->
+    <AssemblyMetadata Include="NotchUpdateFeed" Value="$(NotchUpdateFeed)" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Notchyyyy.Tests" />
