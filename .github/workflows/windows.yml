@@ -94,7 +94,9 @@ jobs:
       - name: Smoothness at 150 %
         if: always() && steps.publish.outcome == 'success'
         run: |
-x
+          $dir = "$env:RUNNER_TEMP/perf/150-defaults"
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--dark','--name','Alex','--perf',$dir -PassThru -Wait
+          Write-Host "=== 150 %: defaults"
           Get-Content "$dir/summary.txt"
 
       - name: Upload smoothness logs
