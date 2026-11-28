@@ -165,6 +165,12 @@ public sealed class CardStrip : Panel
 
     public void InvalidateCards() { foreach (var c in _cards.Values) c.Dirty(); }
 
+    // back on screen (after the picker, another tab): pick up any motion that started while away; frames
+    // can't be asked for while off screen, so a tile pinned meanwhile would otherwise stay invisible (seen on Windows)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) { base.OnAttachedToVisualTree(e); Animate(); }
+
+
+
     private void Go(double target, bool animate = true)
     {
         if (animate) _scroll.AnimateTo(target, Glide, _clock.Now); else _scroll.Snap(target);

@@ -399,6 +399,12 @@ public sealed class TaskList : Panel
 
     private double ContentHeight => Order().Count() * (RowH + Gap) + (_tasks.DoneCount > 0 ? 24 : 0);
 
+    // back on screen (after the picker, another tab): pick up any motion that started while away; frames
+    // can't be asked for while off screen, so a tile pinned meanwhile would otherwise stay invisible (seen on Windows)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) { base.OnAttachedToVisualTree(e); Animate(); }
+
+
+
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);

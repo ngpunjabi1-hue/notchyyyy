@@ -194,6 +194,22 @@ public class AppsTests
         Assert.Equal(rig.View.Grid.Slot(6).Y, tile.Current(rig.Clock.Now).Y, 1);
     }
 
+    /// An app pinned in the picker grows in on the shelf when you go back, even if you go back at once (it used to
+    /// stay invisible: the shelf was off screen when the tile was made, and nothing restarted its motion; seen on Windows).
+    [AvaloniaFact]
+    public void APinMadeInThePickerShowsOnTheShelf()
+    {
+        using var rig = new Rig();
+        rig.View.ShowPicker(true);
+        rig.Run(rig.Clock.Now + 0.6);
+        rig.M.Apps.Add("sample:Spotify");
+        rig.View.ShowPicker(false);
+        rig.Frame();                          // the shelf is back on screen mid-arrival
+        rig.Run(rig.Clock.Now + 1.0);
+        var tile = rig.View.Grid.TileFor("sample:Spotify")!;
+        Assert.Equal(1, tile.Opacity, 2);
+    }
+
     [AvaloniaFact]
     public void PinsAreKeptOnDisk()
     {
