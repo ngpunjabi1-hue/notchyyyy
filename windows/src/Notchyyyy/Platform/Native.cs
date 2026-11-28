@@ -68,6 +68,29 @@ internal sealed class MacPointer : IPointerSource
 }
 
 /// <summary>
+/// Screenshot and screen recording go to Windows' own Snipping Tool, the way a person would start it:
+/// Win+Shift+S for a screenshot, Win+Shift+R for a recording (Windows 11). Its newer ms-screenclip://capture
+/// address only answers packaged apps, so pressing the shortcut is the dependable way.
+/// </summary>
+public static class Capture
+{
+    [StructLayout(LayoutKind.Sequential)] private struct KEYBDINPUT { public ushort vk, scan; public uint flags, time; public IntPtr extra; }
+    [StructLayout(LayoutKind.Explicit, Size = 32)] private struct UNION { [FieldOffset(0)] public KEYBDINPUT ki; }
+    [StructLayout(LayoutKind.Sequential)] private struct INPUT { public uint type; public UNION u; }
+    [DllImport("user32.dll")] private static extern uint SendInput(uint n, INPUT[] inputs, int size);
+
+    public static void Start(bool video)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        ushort[] keys = { 0x5B, 0x10, (ushort)(video ? 0x52 : 0x53) };     // Win, Shift, R / S
+        var list = new List<INPUT>();
+        foreach (var k in keys) list.Add(new INPUT { type = 1, u = new UNION { ki = new KEYBDINPUT { vk = k } } });
+        foreach (var k in Enumerable.Reverse(keys)) list.Add(new INPUT { type = 1, u = new UNION { ki = new KEYBDINPUT { vk = k, flags = 2 } } });
+        SendInput((uint)list.Count, list.ToArray(), Marshal.SizeOf<INPUT>());
+    }
+}
+
+/// <summary>
 /// The Windows overlay: off the taskbar and Alt+Tab, always on top, and click-through while closed
 /// so the transparent window never blocks what's under it. Does nothing on other systems.
 /// </summary>

@@ -18,6 +18,8 @@ public sealed class BlurSwap : Panel
     private readonly List<(Control View, SpringValue Amount)> _items = new();
 
     public Control? Current => _items.Count > 0 ? _items[^1].View : null;
+    /// Test flag --no-blur-swap: plain cross-fade, to measure what the blur costs.
+    public static bool NoBlur { get; } = global::Notchyyyy.Theme.Debug.Has("--no-blur-swap");
 
     public void Show(Control view, double now, bool animate)
     {
@@ -45,7 +47,7 @@ public sealed class BlurSwap : Panel
                 continue;
             }
             view.Opacity = 1 - a;
-            view.Effect = a > 0.01 ? new BlurEffect { Radius = a * 8 } : null;
+            view.Effect = a > 0.01 && !NoBlur ? new BlurEffect { Radius = a * 8 } : null;
         }
     }
 }
@@ -60,10 +62,16 @@ public sealed class ExpandedBody : Grid
     private readonly BlurSwap _title = new();
     private readonly BlurSwap _content = new();
     private readonly NotchModel _m;
+    private readonly IClock _clock;
+
+    /// The Home view when it's the tab on show (the shell steers the big Sprout's gaze through it).
+    public HomeView? CurrentHome => _content.Current as HomeView;
+
+    private Control Content(Tab tab) => tab == Tab.Home ? new HomeView(_m, _clock) : new TabPlaceholder(tab);
 
     public ExpandedBody(NotchModel m, IClock clock)
     {
-        _m = m;
+        _m = m; _clock = clock;
         Width = m.BodySize.Width; Height = m.BodySize.Height;
         RowDefinitions = new RowDefinitions($"{m.NotchSize.Height},*");
 
@@ -91,7 +99,7 @@ public sealed class ExpandedBody : Grid
 
         Showing = m.Tab;
         _title.Show(Label(m.Tab.Title(), LT.Text), clock.Now, animate: false);
-        _content.Show(new TabPlaceholder(m.Tab), clock.Now, animate: false);
+        _content.Show(Content(m.Tab), clock.Now, animate: false);
         UpdateTime();
         DispatcherTimer.Run(() => { UpdateTime(); return true; }, TimeSpan.FromSeconds(15));
     }
@@ -104,7 +112,7 @@ public sealed class ExpandedBody : Grid
         if (tab == Showing) return;
         Showing = tab;
         _title.Show(Label(tab.Title(), LT.Text), now, animate);
-        _content.Show(new TabPlaceholder(tab), now, animate);
+        _content.Show(Content(tab), now, animate);
     }
 
     public bool Animating(double now) => _title.Animating(now) || _content.Animating(now);

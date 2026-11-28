@@ -35,8 +35,10 @@ public sealed class Prefs
     public bool Haptics { get; set; } = true;
     public bool LiveActivity { get; set; } = true;
     public List<string> HiddenTabs { get; set; } = new();
-    /// Sprout beside the pill. Off until Sprout is built (plan step 4).
-    public bool Buddy { get; set; } = false;
+    /// Sprout lives in the closed pill.
+    public bool Buddy { get; set; } = true;
+    /// Asked during setup; Home greets you by it.
+    public string UserName { get; set; } = "";
 
     public double HoverDelay => HoverSpeed switch { HoverSpeed.Instant => 0.03, HoverSpeed.Relaxed => 0.35, _ => 0.12 };
 

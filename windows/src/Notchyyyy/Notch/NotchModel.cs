@@ -33,6 +33,25 @@ public static class TabInfo
     };
 }
 
+/// <summary>
+/// What the little Sprout in the closed pill knows about you (the Mac's BuddyState): where the pointer is, whether
+/// you're typing fast or have stepped away, and when it last celebrated. The real sensors (typing pace from a
+/// keyboard hook that only counts, idle time from GetLastInputInfo) arrive in plan step 11; until then the test
+/// flags --fake-typing and --fake-away stand in.
+/// </summary>
+public sealed class BuddyState
+{
+    public Avalonia.Point Gaze { get; set; }
+    public double CheerUntil { get; set; } = double.NegativeInfinity;
+    public bool Typing { get; set; } = Theme.Debug.Has("--fake-typing");
+    /// 1 at a steady typing pace, up to 2 when you're flying
+    public double Pace { get; set; } = Theme.Debug.Has("--fake-typing") ? 1.6 : 1;
+    public bool Away { get; set; } = Theme.Debug.Has("--fake-away");
+    public double WakeUntil { get; set; } = double.NegativeInfinity;
+    /// The hour of the day (a test can pin it).
+    public Func<int> Hour { get; set; } = () => DateTime.Now.Hour;
+}
+
 /// The state the notch is drawn from. Views listen to <see cref="Changed"/>.
 public sealed class NotchModel
 {
@@ -52,6 +71,25 @@ public sealed class NotchModel
 
     /// Finished the first-run setup (onboarding arrives in plan step 11; until then, always).
     public bool Onboarded => true;
+
+    public BuddyState Buddy { get; } = new();
+
+    /// Asked during setup (plan step 11); Home greets you by it. `--name` stands in for it in tests.
+    public string UserName { get; set; } = Theme.Debug.Value("--name") ?? Prefs.Shared.UserName;
+    public string FirstName => UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+
+    /// Glasses of water today (reminders and saving arrive in plan step 11).
+    public int Glasses { get; set; }
+
+    /// The little Sprout's mood, most important first (the Mac's NotchBuddy).
+    public Sprout.SproutMood BuddyMood(double now) =>
+        now < Buddy.CheerUntil ? Sprout.SproutMood.Cheer :
+        Hovering ? Sprout.SproutMood.Happy :
+        Buddy.Typing ? Sprout.SproutMood.Running :
+        now < Buddy.WakeUntil ? Sprout.SproutMood.Surprised :
+        Buddy.Away ? Sprout.SproutMood.Sleepy :
+        MusicPlaying ? Sprout.SproutMood.Music :
+        Buddy.Hour() >= 23 || Buddy.Hour() < 6 ? Sprout.SproutMood.Sleepy : Sprout.SproutMood.Idle;
 
     public bool Expanded { get => _expanded; set => Set(ref _expanded, value, nameof(Expanded)); }
     public bool Hovering { get => _hovering; set => Set(ref _hovering, value, nameof(Hovering)); }

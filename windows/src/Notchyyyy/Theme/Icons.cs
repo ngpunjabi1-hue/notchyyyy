@@ -3,7 +3,7 @@ using Avalonia.Media;
 
 namespace Notchyyyy.Theme;
 
-public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More }
+public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -129,6 +129,51 @@ public static class Icons
                 Stroke(Line((6.5, 6.5), (17.5, 17.5)));
                 Stroke(Line((17.5, 6.5), (6.5, 17.5)));
                 break;
+            case IconKind.Screenshot:   // a viewfinder: four corner brackets around a lens
+                foreach (var (x, y, dx, dy) in new[] { (3.5, 3.5, 1, 1), (20.5, 3.5, -1, 1), (3.5, 20.5, 1, -1), (20.5, 20.5, -1, -1) })
+                    Stroke(Line((x, y + dy * 5.2), (x, y), (x + dx * 5.2, y)));
+                Dot(new Point(12, 12), 3.6);
+                break;
+            case IconKind.Record:       // a ring with a dot in it
+                ctx.DrawEllipse(null, line, m.Transform(new Point(12, 12)), 8.6 * k, 8.6 * k);
+                Dot(new Point(12, 12), 4.4);
+                break;
+            case IconKind.Drop:
+            {
+                var d = new StreamGeometry();
+                using (var g = d.Open())
+                {
+                    g.BeginFigure(new Point(12, 2.6), true);
+                    g.CubicBezierTo(new Point(15.2, 7.4), new Point(19, 11.4), new Point(19, 15));
+                    g.CubicBezierTo(new Point(19, 18.9), new Point(15.9, 21.6), new Point(12, 21.6));
+                    g.CubicBezierTo(new Point(8.1, 21.6), new Point(5, 18.9), new Point(5, 15));
+                    g.CubicBezierTo(new Point(5, 11.4), new Point(8.8, 7.4), new Point(12, 2.6));
+                    g.EndFigure(true);
+                }
+                Shape(d);
+                break;
+            }
+            case IconKind.Chevron:
+                Stroke(Line((9, 5), (16, 12), (9, 19)));
+                break;
+            case IconKind.Note:         // a quaver: a tilted oval head, a stem and a flag
+            {
+                var head = new EllipseGeometry(new Rect(4, 14.4, 8, 6.2))
+                {
+                    Transform = new MatrixTransform(Matrix.CreateTranslation(-8, -17.5) * Matrix.CreateRotation(-0.35) * Matrix.CreateTranslation(8, 17.5) * m),
+                };
+                ctx.DrawGeometry(fill, null, head);
+                Stroke(Line((11.4, 17), (11.4, 3.6)));
+                var flag = new StreamGeometry();
+                using (var g = flag.Open())
+                {
+                    g.BeginFigure(new Point(11.4, 3.6), false);
+                    g.QuadraticBezierTo(new Point(19.5, 5.5), new Point(18, 11.5));
+                    g.EndFigure(false);
+                }
+                Stroke(flag);
+                break;
+            }
             case IconKind.More:
                 foreach (var x in new[] { 5.5, 12, 18.5 }) Dot(new Point(x, 12), 2);
                 break;

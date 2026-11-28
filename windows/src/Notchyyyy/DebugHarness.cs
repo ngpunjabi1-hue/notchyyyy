@@ -28,6 +28,9 @@ public static class DebugHarness
         var d = Debug.Args;
         void At(double t, Action a) => DispatcherTimer.RunOnce(a, TimeSpan.FromSeconds(t));
 
+        // --no-pointer: ignore the real pointer (for captures while someone is using the machine)
+        if (Debug.Has("--no-pointer")) { s.UseFakePointer = true; s.FakePointer = null; }
+
         if (Debug.Has("--open"))
         {
             s.Model.Pinned = true;
@@ -68,6 +71,7 @@ public static class DebugHarness
 
         if (Debug.Has("--hover-test")) HoverTest(s);
         if (Debug.Has("--win-selftest")) Platform.WinSelfTest.Run(s);
+        if (Debug.Value("--perf") is { } perfDir) PerfProbe.Run(s, perfDir);
 
         // --state-log FILE: every change of the notch's state, with the time, for checking real input from outside
         if (Debug.Value("--state-log") is { } statePath)

@@ -242,7 +242,8 @@ public class FrameTests
         });
         AssertTracks(ms);
         Assert.InRange(ms.First(m => m.T >= 0.5).B, 36.5, 37.5);      // 32 + 5
-        Assert.InRange(ms.First(m => m.T >= 0.5).R - ms.First(m => m.T >= 0.5).L, 180 + 12 + 16 - 12 - 0.6, 180 + 12 + 16 - 12 + 0.6);
+        // Sprout lives in the pill, so it has its activity width: 180 + 12 + 92, +16 on hover, minus the 6 pt flares
+        Assert.InRange(ms.First(m => m.T >= 0.5).R - ms.First(m => m.T >= 0.5).L, 180 + 12 + 92 + 16 - 12 - 0.6, 180 + 12 + 92 + 16 - 12 + 0.6);
         Assert.InRange(ms.Last().B, 31.5, 32.5);
     }
 

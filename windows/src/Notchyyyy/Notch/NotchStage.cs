@@ -29,6 +29,8 @@ public sealed class NotchStage : Panel
     private readonly Panel _barHost = new() { ClipToBounds = false };
     private readonly Panel _bodyHost = new() { ClipToBounds = false };
     private readonly CollapsedBar _barView;
+    private readonly Sprout.SproutView _buddy;
+    public Sprout.SproutView Buddy => _buddy;
     private readonly ExpandedBody _bodyView;
     // the tab bar under the open notch: arrives a beat after the shape (dropping 18 pt and pouring in on its
     // own springy curve), leaves with a quick fade
@@ -54,6 +56,16 @@ public sealed class NotchStage : Panel
         _bodyView = new ExpandedBody(model, clock);
         _pill = new TabPill(model, clock, () => Kick()) { Opacity = 0, IsHitTestVisible = false };
         _barHost.Children.Add(_barView);
+        // the little Sprout in the leading slot (30 pt, 18 pt in from the pill's end), drawn at 30 fps
+        _buddy = new Sprout.SproutView(clock, 30)
+        {
+            Fps = 30, GazeFollowsMood = true, IsHitTestVisible = false,
+            FpsOverride = double.TryParse(Debug.Value("--mini-fps"), System.Globalization.CultureInfo.InvariantCulture, out var mf) ? mf : null,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Margin = new Thickness(18, 0, 0, 0), IsVisible = Prefs.Shared.Buddy,
+            Source = t => (model.BuddyMood(t), model.Buddy.Gaze, model.MusicPlaying, model.Buddy.Pace),
+        };
+        _barHost.Children.Add(_buddy);
         _bodyHost.Children.Add(_bodyView);
         // Hosts are never hidden with IsVisible: switching that back on re-lays-out the whole body at the
         // moment it opens (a dropped frame, measured). Opacity 0 isn't drawn, and keeps the layout ready.
@@ -148,6 +160,7 @@ public sealed class NotchStage : Panel
                 _pill.Select(_m.Tab, now);
                 break;
             default:   // live activity came or went
+                _barView.Refresh();
                 Go(_w, w, LT.OpenWide, now);
                 Go(_activity, _m.Activity ? 1 : 0, LT.OpenWide, now);
                 break;
@@ -237,6 +250,9 @@ public sealed class NotchStage : Panel
         _barShown = barOpacity > 0.001;
         _barHost.IsHitTestVisible = _barShown;
         _barView.Live = _barShown;
+        _buddy.Active = _barShown;
+        // the big Sprout on Home draws only while the open body can be seen
+        if (_bodyView.CurrentHome is { } home) home.Sprout.Active = _bodyShown;
 
         UpdatePill(now);
         _bodyView.Update(now);

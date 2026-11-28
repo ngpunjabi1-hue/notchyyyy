@@ -81,17 +81,45 @@ public sealed class Shell
         };
 
         Stage.Pill.Close = Tracker.Collapse;
+        // Screenshot / Record on Home: close the notch so it isn't in the shot, then open Windows' own Snipping Tool
+        HomeView.Capture = video =>
+        {
+            Tracker.Collapse();
+            DispatcherTimer.RunOnce(() => Platform.Capture.Start(video), TimeSpan.FromSeconds(0.4));
+        };
         Window.KeyDown += (_, e) => { if (NotchKeys.Handle(Model, Tracker.Collapse, e.Key, e.KeyModifiers)) e.Handled = true; };
         Window.Opened += (_, _) =>
         {
             DispatcherTimer.Run(() =>
             {
                 if (UseFakePointer && TickTimes.Count < 4000) TickTimes.Add(Clock.Now);
-                Tracker.Tick(UseFakePointer ? FakePointer : _pointer.Read(Stage));
+                var p = UseFakePointer ? FakePointer : _pointer.Read(Stage);
+                Tracker.Tick(p);
+                LookAt(p);
                 return true;
             }, TimeSpan.FromMilliseconds(16), DispatcherPriority.Input);
             DebugHarness.Start(this);
         };
+    }
+
+    /// The little Sprout's eyes follow the pointer when it's near the top of the screen (the Mac's track()):
+    /// a direction from Sprout, stronger up to 160 pt away, in steps of 1/6 so it doesn't redraw for every pixel.
+    private void LookAt(Point? pointer)
+    {
+        // the big Sprout on Home follows the pointer anywhere on screen: a direction from between its eyes,
+        // stronger the farther away (up to 0.9 × its size)
+        if (Model.Expanded && pointer is { } q && Stage.Body.CurrentHome is { } home)
+        {
+            var e = home.EyesInBody();
+            double ex = q.X + Model.BodySize.Width / 2, ey = q.Y;     // the pointer in open-body coordinates
+            double gx = ex - e.X, gy = ey - e.Y, l = Math.Max(1, Math.Sqrt(gx * gx + gy * gy)), r = Math.Min(1, l / (HomeView.SproutSize * 0.9));
+            HomeView.HomeGaze = new Point(gx / l * r, gy / l * r);
+        }
+        if (Model.Expanded || !Prefs.Shared.Buddy || pointer is not { } p) return;
+        double bx = -(Model.NotchSize.Width + 12 + Model.Extra) / 2 + 18 + 15, by = Model.NotchSize.Height / 2;
+        double dx = p.X - bx, dy = p.Y - by, len = Math.Max(1, Math.Sqrt(dx * dx + dy * dy)), reach = Math.Min(1, len / 160);
+        var g = new Point(Math.Round(dx / len * reach * 6) / 6, Math.Round(dy / len * reach * 6) / 6);
+        if (g != Model.Buddy.Gaze) { Model.Buddy.Gaze = g; Stage.Kick(); }
     }
 
     private Window MakeOverlay()

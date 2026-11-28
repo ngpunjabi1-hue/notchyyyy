@@ -7,8 +7,9 @@ using Notchyyyy.Theme;
 namespace Notchyyyy.Notch;
 
 /// <summary>
-/// What the closed pill shows: a live activity either side of its centre (for now the music one:
-/// art on the left, bars on the right). Sprout joins in plan step 4.
+/// What the closed pill shows: a live activity either side of its centre (for now the music one: art on the
+/// left, bars on the right). With Sprout on, Sprout takes the left slot (it wears headphones while music plays)
+/// and the art isn't shown, as on the Mac.
 /// </summary>
 public sealed class CollapsedBar : Control
 {
@@ -24,6 +25,9 @@ public sealed class CollapsedBar : Control
         get => _live;
         set { if (_live == value) return; _live = value; if (value) Tick(); }
     }
+
+    /// Music started or stopped (or Sprout was switched): redraw now and (re)start the bars.
+    public void Refresh() { InvalidateVisual(); Tick(); }
 
     private void Tick()
     {
@@ -45,16 +49,16 @@ public sealed class CollapsedBar : Control
         double h = Bounds.Height, inset = 6 + 12;   // the bar's padding, then inset from the rounded ends
         double now = _clock.Now;
 
-        // leading: the artwork (a stand-in until real media arrives)
-        var art = new Rect(inset + 1, (h - 22) / 2, 22, 22);
         var a = LT.AccentOf(Prefs.Shared.Accent);
+        // leading: the artwork (a stand-in until real media arrives), unless Sprout sits there
+        var art = new Rect(inset + 1, (h - 22) / 2, 22, 22);
         var grad = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
             EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
             GradientStops = { new GradientStop(Shade(a, 1.15), 0), new GradientStop(Shade(a, 0.55), 1) },
         };
-        ctx.DrawRectangle(grad, null, art, 6, 6);
+        if (!Prefs.Shared.Buddy) ctx.DrawRectangle(grad, null, art, 6, 6);
 
         // trailing: four bars, each on its own beat (MusicBars, scaled 0.85)
         double cx = Bounds.Width - inset - 12, cy = h / 2, k = 0.85;
