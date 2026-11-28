@@ -34,6 +34,7 @@ public sealed class OnboardingView : Canvas
     private readonly TextBox _name;
     private SetupStep _step;
     private bool _ticking;
+    private volatile SproutMood _mood = SproutMood.Idle;
 
     /// Finishing setup (the shell closes the pin; tests watch it).
     public static event Action? Finished;
@@ -46,7 +47,9 @@ public sealed class OnboardingView : Canvas
         _sprout = new SproutView(clock, HomeView.SproutSize)
         {
             Interactive = true, HitDepth = 0.74,
-            Source = t => (Mood, HomeView.HomeGaze, false, 1),
+            // read on the render thread: only the field, worked out on the UI thread (reading the name box from
+            // the render thread threw, and Sprout wasn't drawn on the first page — seen on Windows)
+            Source = t => (_mood, HomeView.HomeGaze, false, 1),
         };
         double canvas = HomeView.SproutSize * 1.3, rectTop = (HomeView.SproutSize - canvas) / 2 + canvas * 0.115, k = canvas * 0.77 / 100;
         SetLeft(_sprout, SproutColumn / 2 - HomeView.SproutSize / 2);
@@ -61,7 +64,7 @@ public sealed class OnboardingView : Canvas
         };
         Fields.Quiet(_name);
         _name.Resources["TextControlBorderBrushFocused"] = new SolidColorBrush(LT.AccentColor.WithOpacity(0.6));
-        _name.TextChanged += (_, _) => _primary?.SetEnabled(_step != SetupStep.Name || NameText.Length > 0);   // Sprout smiles once there's a name
+        _name.TextChanged += (_, _) => { _primary?.SetEnabled(_step != SetupStep.Name || NameText.Length > 0); UpdateMood(); };   // Sprout smiles once there's a name
         _name.KeyDown += (_, e) => { if (e.Key == Key.Enter && NameText.Length > 0) { Go(1); e.Handled = true; } };
 
         _progress = new Progress(clock);
@@ -83,6 +86,7 @@ public sealed class OnboardingView : Canvas
 
         _pages.Show(Page(_step), 0, clock.Now, animate: false);
         Chrome();
+        UpdateMood();
     }
 
     public SetupStep Step => _step;
@@ -93,8 +97,14 @@ public sealed class OnboardingView : Canvas
     public Control CurrentPage => _pages.Current!;
     private string NameText => (_name.Text ?? "").Trim();
 
-    /// What Sprout feels on each page (the Mac's sproutMood).
-    public SproutMood Mood => _step switch
+    /// What Sprout feels on each page (the Mac's sproutMood); safe to read from any thread.
+    public SproutMood Mood => _mood;
+
+    private void OnPref(string name) { if (name == nameof(Prefs.WaterReminders)) UpdateMood(); }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { base.OnDetachedFromVisualTree(e); Prefs.Shared.Changed -= OnPref; }
+
+    /// Works the mood out on the UI thread (it reads the name box).
+    private void UpdateMood() => _mood = _step switch
     {
         SetupStep.Name => NameText.Length == 0 ? SproutMood.Idle : SproutMood.Happy,
         SetupStep.Look => SproutMood.Love,
@@ -106,6 +116,9 @@ public sealed class OnboardingView : Canvas
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        Prefs.Shared.Changed -= OnPref;
+        Prefs.Shared.Changed += OnPref;
+        UpdateMood();
         if (_step == SetupStep.Name) Avalonia.Threading.DispatcherTimer.RunOnce(() => _name.Focus(), TimeSpan.FromSeconds(0.35));
     }
 
@@ -124,6 +137,7 @@ public sealed class OnboardingView : Canvas
         Saved = _step;
         _pages.Show(Page(_step), d, _clock.Now, animate: true);
         Chrome();
+        UpdateMood();
         Tick();
         if (_step == SetupStep.Name) Avalonia.Threading.DispatcherTimer.RunOnce(() => _name.Focus(), TimeSpan.FromSeconds(0.3));
     }

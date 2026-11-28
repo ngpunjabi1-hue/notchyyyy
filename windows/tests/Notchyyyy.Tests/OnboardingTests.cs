@@ -80,6 +80,10 @@ public class OnboardingTests
         Assert.Equal(0, rig.Stage.PillOpacity, 3);                 // the tab bar waits until setup is finished
         Assert.Equal("Welcome", rig.Stage.Body.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text is "Welcome" or "Home").Text);
         Assert.False(rig.Setup.Primary.IsOn);                      // a name first
+        // Sprout's mood is read on the render thread: reading it off the UI thread must work (it threw, and Sprout
+        // wasn't drawn on this page — seen on Windows; headless tests draw on the UI thread, so it hid here)
+        var mood = Task.Run(() => rig.Setup.Mood).GetAwaiter().GetResult();
+        Assert.Equal(Notchyyyy.Sprout.SproutMood.Idle, mood);
         rig.Setup.Primary.Press();
         Assert.Equal(SetupStep.Name, rig.Setup.Step);
     }
