@@ -38,60 +38,66 @@ jobs:
           NOTCHYYYY_FRAMES: ${{ runner.temp }}/frames
         run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory "$env:RUNNER_TEMP/test-results"
 
+      # The build users get: precompiled (ReadyToRun) for Windows x64. Self-tests and measurements use it.
+      - name: Publish (ReadyToRun, as shipped)
+        id: publish
+        run: dotnet publish src/Notchyyyy/Notchyyyy.csproj -c Release -r win-x64 --self-contained false -p:PublishReadyToRun=true -o "$env:RUNNER_TEMP/app"
+
       - name: Overlay self-test (dark)
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
-          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/selftest-dark.txt"
           exit $p.ExitCode
 
       - name: Overlay self-test (light)
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
-          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/selftest-light.txt"
           exit $p.ExitCode
 
       # Smoothness: a scripted session with every frame timed (see src/Notchyyyy/PerfProbe.cs), comparing Sprout
       # redraw rates (0 = every display frame). This runner has no graphics card, so it's a worst case.
       - name: Smoothness at 100 %
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
-          foreach ($v in @('60 30', '0 30', '0 60', '0 0')) {
-            $a = $v.Split(' ')
-            $dir = "$env:RUNNER_TEMP/perf/100-sprout$($a[0])-mini$($a[1])"
-            $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--dark','--name','Alex','--sprout-fps',$a[0],'--mini-fps',$a[1],'--perf',$dir -PassThru -Wait
-            Write-Host "=== big Sprout fps $($a[0]) (0 = every frame), little Sprout fps $($a[1])"
+          $runs = @(
+            @{ name = 'little60';           args = @('--mini-fps','60') },
+            @{ name = 'little30';           args = @('--mini-fps','30') },
+            @{ name = 'little60-nolayered'; args = @('--mini-fps','60','--no-layered') }
+          )
+          foreach ($r in $runs) {
+            $dir = "$env:RUNNER_TEMP/perf/100-$($r.name)"
+            $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList (@('--dark','--name','Alex','--perf',$dir) + $r.args) -PassThru -Wait
+            Write-Host "=== 100 %: $($r.name)"
             Get-Content "$dir/summary.txt"
           }
 
       # Laptops usually run at 125-150 % scaling. Switch the runner's screen live, then repeat the self-test.
       - name: Overlay self-test at 125 % (1920x1080)
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
           ./ci/display.ps1 -Width 1920 -Height 1080 -Scale 125
-          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest/scale-125" -PassThru -Wait
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest/scale-125" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/scale-125/selftest-dark.txt"
           exit $p.ExitCode
 
       - name: Overlay self-test at 150 % (1920x1080)
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
           ./ci/display.ps1 -Width 1920 -Height 1080 -Scale 150
-          $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest/scale-150" -PassThru -Wait
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest/scale-150" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/scale-150/selftest-light.txt"
           exit $p.ExitCode
 
       - name: Smoothness at 150 %
-        if: always() && steps.build.outcome == 'success'
+        if: always() && steps.publish.outcome == 'success'
         run: |
-          foreach ($v in @('60 30', '0 30')) {
-            $a = $v.Split(' ')
-            $dir = "$env:RUNNER_TEMP/perf/150-sprout$($a[0])-mini$($a[1])"
-            $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--dark','--name','Alex','--sprout-fps',$a[0],'--mini-fps',$a[1],'--perf',$dir -PassThru -Wait
-            Write-Host "=== 150 %: big Sprout fps $($a[0]), little Sprout fps $($a[1])"
-            Get-Content "$dir/summary.txt"
-          }
+          $dir = "$env:RUNNER_TEMP/perf/150-little60"
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP/app/Notchyyyy.exe" -ArgumentList '--dark','--name','Alex','--mini-fps','60','--perf',$dir -PassThru -Wait
+          Write-Host "=== 150 %: little60"
+          Get-Content "$dir/summary.txt"
 
       - name: Upload smoothness logs
         if: always()

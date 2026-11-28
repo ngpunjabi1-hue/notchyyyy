@@ -187,3 +187,38 @@ public class HomeLifetimeTests
         win.Close();
     }
 }
+
+public class HomeReuseTests
+{
+    /// Home is built once: going back to it (even halfway through it fading out) brings back the same view,
+    /// never a second copy, and it ends fully visible.
+    [AvaloniaFact]
+    public void SwitchingBackMidFadeReusesHome()
+    {
+        var m = new NotchModel(); var clock = new ManualClock { Now = 1 };
+        var stage = new NotchStage(m, clock) { Width = 820, Height = 430 };
+        var win = new Window { Width = 820, Height = 430, Content = stage };
+        win.Show();
+        void Run(double until) { for (double t = clock.Now; t <= until; t += 1 / 60.0) { clock.Now = t; stage.Update(t); Dispatcher.UIThread.RunJobs(); } }
+        clock.Now = 1.1; m.Expanded = true;
+        Run(2.0);
+        var home = stage.Body.CurrentHome!;
+        clock.Now = 2.0; m.Tab = Tab.Media;
+        Run(2.05);                                            // Home is half faded out
+        clock.Now = 2.05; m.Tab = Tab.Home;
+        Run(3.0);
+        Assert.Same(home, stage.Body.CurrentHome);
+        var swap = (Panel)home.Parent!;
+        Assert.Equal(1, swap.Children.Count(c => c is HomeView));
+        Assert.Equal(1.0, home.Opacity, 3);
+        Assert.Null(home.Effect);
+        // and once more after it had fully left
+        clock.Now = 3.0; m.Tab = Tab.Apps; Run(4.0);
+        Assert.Null(stage.Body.CurrentHome);
+        clock.Now = 4.0; m.Tab = Tab.Home; Run(5.0);
+        Assert.Same(home, stage.Body.CurrentHome);
+        Assert.Equal(1.0, home.Opacity, 3);
+        Assert.True(home.Refreshing);
+        win.Close();
+    }
+}

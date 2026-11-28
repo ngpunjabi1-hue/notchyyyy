@@ -23,6 +23,18 @@ public sealed class BlurSwap : Panel
 
     public void Show(Control view, double now, bool animate)
     {
+        // a view that is still fading out comes back from where it is, instead of being added twice
+        int back = _items.FindIndex(i => ReferenceEquals(i.View, view));
+        if (back >= 0)
+        {
+            var (_, returning) = _items[back];
+            _items.RemoveAt(back);
+            foreach (var (_, a) in _items) a.AnimateTo(1, LT.Snappy, now);
+            if (animate) returning.AnimateTo(0, LT.Snappy, now); else returning.Snap(0);
+            _items.Add((view, returning));
+            Update(now);
+            return;
+        }
         foreach (var (_, a) in _items) a.AnimateTo(1, LT.Snappy, now);   // everything already here leaves
         var amount = new SpringValue(animate ? 1 : 0, 0.002);
         if (animate) amount.AnimateTo(0, LT.Snappy, now);
@@ -67,7 +79,9 @@ public sealed class ExpandedBody : Grid
     /// The Home view when it's the tab on show (the shell steers the big Sprout's gaze through it).
     public HomeView? CurrentHome => _content.Current as HomeView;
 
-    private Control Content(Tab tab) => tab == Tab.Home ? new HomeView(_m, _clock) : new TabPlaceholder(tab);
+    // Home is made once and kept: building it again on every switch cost a visible stall (measured on Windows)
+    private HomeView? _home;
+    private Control Content(Tab tab) => tab == Tab.Home ? (_home ??= new HomeView(_m, _clock)) : new TabPlaceholder(tab);
 
     public ExpandedBody(NotchModel m, IClock clock)
     {

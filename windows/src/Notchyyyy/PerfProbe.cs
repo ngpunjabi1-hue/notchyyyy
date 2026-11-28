@@ -94,7 +94,12 @@ public static class PerfProbe
             foreach (var ph in phases.Where(p => p.Name != "warmup"))
             {
                 var ts = frames.Where(f => f.Phase == ph.Name).Select(f => f.T).ToList();
-                if (ts.Count < 3) { sb.AppendLine($"{ph.Name,-24} {ts.Count,6}"); continue; }
+                if (ts.Count < 3)
+                {
+                    double idleCpu = cpu.TryGetValue(ph.Name, out var ic) ? ic / ((ph.End - ph.Start) * 1000) * 100 : double.NaN;
+                    sb.AppendLine($"{ph.Name,-24} {ts.Count,6} {"",10} {"",7} {"",9} {"",5} {idleCpu,6:0}");
+                    continue;
+                }
                 var d = ts.Zip(ts.Skip(1), (a, b) => (b - a) * 1000).OrderBy(x => x).ToList();
                 double frame = 1000 / hz;
                 int late = d.Count(x => x > frame * 1.5);

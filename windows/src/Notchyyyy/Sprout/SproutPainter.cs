@@ -91,6 +91,15 @@ public static class SproutPainter
         return (img, w, h, sg);
     }
 
+    /// Prepares the soft shapes for a Sprout <paramref name="boxSize"/> pt tall at <paramref name="scale"/>, so the
+    /// first time it appears costs nothing extra (making them took 25 ms once, measured).
+    public static void Warm(double boxSize, double scale)
+    {
+        double ppu = boxSize * 1.3 * 0.77 / 100 * scale;
+        foreach (var kind in new[] { Soft.Shadow, Soft.Highlight, Soft.Blush }) Sprite(kind, ppu);
+        _ = Glow.Pos.Length;
+    }
+
     private static readonly SKSamplingOptions Smooth = new(SKFilterMode.Linear, SKMipmapMode.None);
 
     /// Draws a soft shape so that its unblurred ellipse would fill <paramref name="e"/> (device units), in <paramref name="color"/>.

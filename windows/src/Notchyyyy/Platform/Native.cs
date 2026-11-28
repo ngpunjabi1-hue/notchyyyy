@@ -133,9 +133,10 @@ public static class Overlay
         var h = Hwnd(w);
         if (h == IntPtr.Zero) return;
         long ex = GetWindowLongPtr(h, GWL_EXSTYLE).ToInt64();
-        ex = (ex | WS_EX_TOOLWINDOW | WS_EX_LAYERED) & ~WS_EX_APPWINDOW;
+        bool layered = !Theme.Debug.Has("--no-layered");     // test flag: measure what the layered style costs
+        ex = (ex | WS_EX_TOOLWINDOW | (layered ? WS_EX_LAYERED : 0)) & ~WS_EX_APPWINDOW;
         SetWindowLongPtr(h, GWL_EXSTYLE, new IntPtr(ex));
-        SetLayeredWindowAttributes(h, 0, 255, LWA_ALPHA);
+        if (layered) SetLayeredWindowAttributes(h, 0, 255, LWA_ALPHA);
     }
 
     public static void SetClickThrough(Window w, bool through)

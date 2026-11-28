@@ -131,6 +131,8 @@ public static class WinSelfTest
             var pill = new POINT { X = cx, Y = rc.T + Px(12) };
             var away = new POINT { X = cx, Y = shh - Px(120) };
             var body = new POINT { X = cx + Px(200), Y = rc.T + Px(200) };
+            // a spot of plain background in the open body: below Home's cards, clear of the rounded corner
+            var plain = new POINT { X = cx + Px(250), Y = rc.T + Px(288) };
 
             // closed: the pill is drawn, and clicks pass straight through it
             SetCursorPos(away.X, away.Y);
@@ -174,7 +176,7 @@ public static class WinSelfTest
             Check("open: takes clicks (no WS_EX_TRANSPARENT)", (ex2 & WS_EX_TRANSPARENT) == 0);
             var underBody = GetAncestor(WindowFromPoint(body), 2);
             Check("open: a click on the body reaches the notch", underBody == hwnd, $"hwnd under body {underBody}");
-            var (br, bg, bb) = open.At(body.X, body.Y);
+            var (br, bg, bb) = open.At(plain.X, plain.Y);
             int expect = LT.Light ? 249 : 0;
             Check("open body drawn in the theme's background", Math.Abs(br - expect) <= 3 && Math.Abs(bg - expect) <= 3 && Math.Abs(bb - expect) <= 3, $"pixel {br},{bg},{bb}");
 

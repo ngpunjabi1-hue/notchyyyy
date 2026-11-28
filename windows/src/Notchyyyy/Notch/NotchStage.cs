@@ -212,6 +212,9 @@ public sealed class NotchStage : Panel
         _ = Ease.Out.At(0.5) + Ease.In.At(0.5);
         _warmFrames = 3;
         ForceFrames(_warmFrames + 1);
+        double scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        Sprout.SproutPainter.Warm(30, scale);
+        Sprout.SproutPainter.Warm(Notch.HomeView.SproutSize, scale);
     }
 
     private void WarmFrame()
