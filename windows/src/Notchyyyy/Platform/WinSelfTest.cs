@@ -296,12 +296,21 @@ public static class WinSelfTest
             await Wait(0.8);
 
             // ---- step 5: Settings › About, typing your name with the real keyboard; launch at login ----
-            Notch.SettingsView.LastPage = Notch.SettingsPage.About;
             sh.Model.Tab = Tab.Settings;
             SetCursorPos(pill.X, pill.Y);
             await Wait(0.9);
             Check("re-opens on Settings", sh.Model.Expanded && sh.Model.Tab == Tab.Settings);
             await Wait(0.5);
+            // go to About the way a person would: click it in the sidebar
+            if (sh.Stage.Body.CurrentSettings is { } settings)
+            {
+                var sp = settings.Sidebar.TranslatePoint(new Point(70, Notch.SettingsSidebar.Y((int)Notch.SettingsPage.About) + 16), sh.Window)!.Value;
+                SetCursorPos(rc.L + Px(sp.X), rc.T + Px(sp.Y));
+                await Wait(0.2);
+                Click();
+                await Wait(0.7);
+                Check("clicking About in the sidebar opens it", Notch.SettingsView.LastPage == Notch.SettingsPage.About);
+            }
             var box = sh.Stage.Body.CurrentSettings?.CurrentPage?.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
             Check("About shows the name field", box is not null);
             if (box is not null)
