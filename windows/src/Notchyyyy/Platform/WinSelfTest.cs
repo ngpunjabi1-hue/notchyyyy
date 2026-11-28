@@ -599,10 +599,10 @@ public static class WinSelfTest
                         t.Start();
                         return t;
                     }).ToList();
-                    int before = sys.Samples;
+                    int readingsBefore = sys.Samples;
                     await Wait(2.8);
                     double busy = sys.Cpu;
-                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm && sys.Samples > before, $"calm {calm:P0}, busy {busy:P0}, {sys.Samples - before} readings meanwhile");
+                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm && sys.Samples > readingsBefore, $"calm {calm:P0}, busy {busy:P0}, {sys.Samples - readingsBefore} readings meanwhile");
                     foreach (var t in spin) t.Join();
                 }
                 sh.Model.Tab = Tab.System;
