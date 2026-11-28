@@ -590,7 +590,7 @@ public static class WinSelfTest
                 double calm = sys.Cpu;
                 // (on threads of their own, below normal priority: busy work on the shared pool held up the reading's own
                 // timer on a 4-core runner, so no new reading came — the test's fault, not the app's)
-                using (var stop = new CancellationTokenSource(TimeSpan.FromSeconds(3.2)))
+                using (var stop = new CancellationTokenSource())
                 {
                     var spin = Enumerable.Range(0, Environment.ProcessorCount).Select(_ =>
                     {
@@ -599,10 +599,13 @@ public static class WinSelfTest
                         t.Start();
                         return t;
                     }).ToList();
+                    // a reading covers the last 1.5 s: wait for two after the busy work began, so the latest is all busy
+                    // (one that started before it averaged to ~50 % on one run)
                     int readingsBefore = sys.Samples;
-                    await Wait(2.8);
+                    for (int i = 0; i < 60 && sys.Samples < readingsBefore + 2; i++) await Wait(0.1);
                     double busy = sys.Cpu;
-                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm && sys.Samples > readingsBefore, $"calm {calm:P0}, busy {busy:P0}, {sys.Samples - readingsBefore} readings meanwhile");
+                    Check("the CPU reading rises when the machine gets busy", busy > 0.7 && busy > calm, $"calm {calm:P0}, busy {busy:P0}, {sys.Samples - readingsBefore} readings meanwhile");
+                    stop.Cancel();
                     foreach (var t in spin) t.Join();
                 }
                 sh.Model.Tab = Tab.System;
