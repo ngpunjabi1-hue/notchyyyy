@@ -46,6 +46,6 @@ The Windows runner's screen is 1024×768 at 100 %. Laptops usually run at 125–
 maths divide by the scaling, but that path is untested until a run at higher scaling or your laptop.
 - **Icons**: Notchyyyy's own vector set (SF Symbols can't ship on Windows), drawn without pushed transforms
   (Avalonia's off-screen renderer mis-composed them at 2x, dropping icons).
-- **Glass without blur**: the tab bar is a 90 % tint with a hairline edge and a top highlight; a transparent overlay
-  window can't blur the desktop behind part of itself.
+- **Glass without blur**: the tab bar is opaque with a hairline edge and a top highlight. A transparent overlay
+  window can't blur the desktop behind part of itself, and a 90 % tint let text behind it show through (seen on Windows).
 - **Keyboard returns** to the app you were in when the notch closes (Windows needs this explicitly).

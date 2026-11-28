@@ -12,7 +12,8 @@ namespace Notchyyyy.Notch;
 /// slides to the selected tab, and a round glass close button beside it. Sizes follow the Mac app's TabPill:
 /// 34 pt buttons 4 pt apart, 5 pt inside the capsule, the close button 42 pt and 12 pt away.
 /// Without a real backdrop blur (an overlay window can't blur the desktop behind part of itself), the glass is
-/// a near-opaque tint with a hairline edge and a soft top highlight.
+/// opaque with a hairline edge and a soft top highlight: any see-through tint let text behind it show through,
+/// readable, on the Windows runner (a 90 % tint was tried and rejected).
 /// </summary>
 public sealed class TabPill : Control, Avalonia.Rendering.ICustomHitTest
 {
@@ -122,7 +123,7 @@ public sealed class TabPill : Control, Avalonia.Rendering.ICustomHitTest
 
     private static void Glass(DrawingContext ctx, Geometry shape, Rect bounds)
     {
-        ctx.DrawGeometry(new SolidColorBrush(LT.Bg.WithOpacity(0.9)), null, shape);
+        ctx.DrawGeometry(new SolidColorBrush(LT.Bg), null, shape);
         // a soft highlight along the top edge, fading out by the middle
         var top = new LinearGradientBrush
         {

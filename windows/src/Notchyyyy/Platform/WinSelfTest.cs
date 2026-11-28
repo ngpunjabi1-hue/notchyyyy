@@ -242,6 +242,15 @@ public static class WinSelfTest
             Check("clicking a tab selects it", sh.Model.Tab == tabs[1], $"tab {sh.Model.Tab}");
             Check("a click inside gives the notch the keyboard", GetForegroundWindow() == hwnd);
             var mediaShot = Capture(); Save(mediaShot, Path.Combine(dir, $"{theme}-4-tab-media.png"));
+            // whatever is behind the tab bar (here the runner's terminal text) must not show through it
+            int rowY = rc.T + Px(st.PillRect.Y + TabPill.RowHeight / 2 - TabPill.Button / 2 - 2.5);
+            int lo = 255, hi = 0;
+            for (int x = rc.L + Px(st.PillRect.X + 24); x < rc.L + Px(st.PillRect.X + st.Pill.GlassWidth - 24); x++)
+            {
+                var (r, _, _) = mediaShot.At(x, rowY);
+                lo = Math.Min(lo, r); hi = Math.Max(hi, r);
+            }
+            Check("nothing behind the tab bar shows through it", hi - lo <= 2, $"{hi - lo} levels of variation along the capsule");
             Keys(0x11, 0x33);   // Ctrl+3
             await Wait(0.6);
             Check("Ctrl+3 switches to the third tab", sh.Model.Tab == tabs[2], $"tab {sh.Model.Tab}");

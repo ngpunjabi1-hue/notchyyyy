@@ -311,6 +311,38 @@ public class TabBarTests
         Assert.False(rig.M.Expanded);
     }
 
+    // ---- 7. nothing behind the bar shows through it (a busy, high-contrast backdrop) ----
+
+    [AvaloniaTheory]
+    [InlineData(false)] [InlineData(true)]
+    public void NothingShowsThroughTheTabBar(bool light)
+    {
+        Prefs.Shared.Appearance = light ? Appearance.Light : Appearance.Dark;
+        var m = new NotchModel(); var clock = new ManualClock();
+        var stage = new NotchStage(m, clock) { Width = W, Height = H };
+        // a 2 pt black-and-white checkerboard behind everything
+        var checker = new DrawingBrush(new GeometryDrawing
+        {
+            Brush = Brushes.White,
+            Geometry = new GeometryGroup { Children = { new RectangleGeometry(new Rect(0, 0, 2, 2)), new RectangleGeometry(new Rect(2, 2, 2, 2)) } },
+        }) { TileMode = TileMode.Tile, DestinationRect = new RelativeRect(0, 0, 4, 4, RelativeUnit.Absolute) };
+        var win = new Window { Width = W, Height = H, Content = new Grid { Background = Brushes.Black, Children = { new Border { Background = checker }, stage } } };
+        win.Show();
+        clock.Now = 0.1; m.Expanded = true;
+        clock.Now = 1.5; stage.Update(1.5); Dispatcher.UIThread.RunJobs();
+        var bmp = win.CaptureRenderedFrame()!;
+        bmp.Save(Path.Combine(Out("tabbar-busy"), $"busy-{(light ? "light" : "dark")}.png"), new PngBitmapEncoderOptions());
+        var p = new Pixels(bmp, 1);
+        // a row across the capsule between the top of the buttons and the capsule's top edge: one even colour
+        double y = stage.PillRect.Y + TabPill.RowHeight / 2 - TabPill.Button / 2 - 2.5;
+        var seen = new HashSet<(int, int, int)>();
+        for (double x = stage.PillRect.X + 24; x < stage.PillRect.X + stage.Pill.GlassWidth - 24; x += 1) seen.Add(p.At(x, y));
+        int spread = seen.Max(c => c.Item1) - seen.Min(c => c.Item1);
+        Assert.True(spread <= 2, $"the backdrop shows through the tab bar ({spread} levels of variation along the capsule)");
+        win.Close();
+        Prefs.Shared.Appearance = Appearance.Dark;
+    }
+
     // ---- 6. hover: an unselected tab swells and brightens; the selected one doesn't swell ----
 
     [AvaloniaFact]
