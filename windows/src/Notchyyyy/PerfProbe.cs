@@ -30,7 +30,8 @@ public static class PerfProbe
         var cpu = new Dictionary<string, double>();
         string phase = "warmup";
         var little = new List<(double T, string Phase)>();
-        Sprout.SproutView.Rendered = v => { if (v.BoxSize >= 100) sprout.Add((Now(), phase)); else little.Add((Now(), phase)); };
+        // called on the render thread
+        Sprout.SproutView.Rendered = v => { lock (sprout) { if (v.BoxSize >= 100) sprout.Add((Now(), phase)); else little.Add((Now(), phase)); } };
         var paint = new List<(double Ms, double Size)>();
         Sprout.SproutView.Painted = (ms, size) => { lock (paint) paint.Add((ms, size)); };
         double phaseCpuStart = proc.TotalProcessorTime.TotalMilliseconds;
@@ -82,6 +83,8 @@ public static class PerfProbe
         DispatcherTimer.RunOnce(() =>
         {
             running = false;
+            Sprout.SproutView.Rendered = null; Sprout.SproutView.Painted = null;
+            System.Threading.Thread.Sleep(50);
             var csv = new StringBuilder("t,phase\n");
             foreach (var f in frames) csv.Append(f.T.ToString("0.0000", CultureInfo.InvariantCulture)).Append(',').Append(f.Phase).Append('\n');
             File.WriteAllText(Path.Combine(dir, "frames.csv"), csv.ToString());

@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Rendering.SceneGraph;
+using Avalonia.Rendering.Composition;
 using Avalonia.Skia;
 using Notchyyyy.Motion;
 using Notchyyyy.Theme;
@@ -10,17 +10,20 @@ using Notchyyyy.Theme;
 namespace Notchyyyy.Sprout;
 
 /// <summary>
-/// Sprout on screen. The control is a <c>Size</c>-pt box; Sprout is drawn on a canvas 1.3× bigger, centred on it
+/// Sprout on screen. The control is a <c>BoxSize</c>-pt box; Sprout is drawn on a canvas 1.3× bigger, centred on it
 /// (room for the glow and the signs above its head), resting on the floor 11.5 % up from the canvas's bottom,
-/// exactly like the Mac app's MiniSprout / SproutView. The pose is worked out here each frame and handed to Skia.
+/// exactly like the Mac app's MiniSprout / SproutView.
+///
+/// Smoothness: Sprout is animated by Avalonia's render thread (a composition visual whose handler is called on every
+/// display frame), not by the UI thread asking for redraws. Redraws asked from the UI thread kept an uneven rhythm
+/// (16–25 ms on a 120 Hz Mac, 16–48 ms on Windows; measured) even though drawing Sprout takes ~0.15 ms. Pointer input
+/// (hover, pokes) stays on the UI thread; the render thread only reads that state.
 /// </summary>
 public class SproutView : Control, Avalonia.Rendering.ICustomHitTest
 {
     private readonly IClock _clock;
-    private readonly SproutTween _tween = new();
-    private bool _ticking, _attached;
-    private double _lastDraw = double.NegativeInfinity;
-    private TimeSpan _lastTick = TimeSpan.MinValue;
+    private CompositionCustomVisual? _visual;
+    private double _scale = 1;
 
     public SproutView(IClock clock, double size)
     {
@@ -37,30 +40,37 @@ public class SproutView : Control, Avalonia.Rendering.ICustomHitTest
     public Point Gaze { get; set; }
     public bool Headphones { get; set; }
     public double Pace { get; set; } = 1;
-    /// Frames per second while visible: the little one in the pill needs fewer than the big one on Home.
+    /// Frames per second while visible (0 = every display frame).
     public double Fps { get; set; } = 60;
-    /// When set, asked every frame for the mood, gaze, headphones and typing pace (so time-based moods, like a cheer
-    /// running out or night falling, change on their own).
-    public Func<double, (SproutMood Mood, Point Gaze, bool Headphones, double Pace)>? Source { get; set; }
-
-    /// Test flags --sprout-fps / --mini-fps override the rates (0 = every display frame).
+    /// Test flags --sprout-fps / --mini-fps override the rate.
     public double? FpsOverride { get; set; }
-
-    /// Off while whatever holds Sprout is hidden (opacity 0): no frames are drawn then.
-    public bool Active { get; set; } = true;
     /// Pokes and hover (the big Sprout on Home); off for the little one.
     public bool Interactive { get; set; }
     /// How far down (0…1 of its box) Sprout answers the pointer: less when part of it is hidden below an edge.
     public double HitDepth { get; set; } = 1;
-
     /// The little Sprout's rule (NotchBuddy): asleep or listening it looks straight ahead; running, it looks where it's going.
     public bool GazeFollowsMood { get; set; }
+    /// When set, asked every frame (on the render thread: it must only read) for the mood, gaze, headphones and pace,
+    /// so time-based moods (a cheer running out, night falling) change on their own.
+    public Func<double, (SproutMood Mood, Point Gaze, bool Headphones, double Pace)>? Source { get; set; }
 
-    /// The mood actually drawn this frame (after taps and hover).
+    private volatile bool _active = true;
+    /// Off while whatever holds Sprout is hidden (opacity 0): no frames are drawn then.
+    public bool Active
+    {
+        get => _active;
+        set { if (_active == value) return; _active = value; if (value) _visual?.SendHandlerMessage(Kick); }
+    }
+
+    /// The mood actually drawn in the last frame (after taps and hover).
     public SproutMood Showing { get; private set; }
 
-    // ---- poking (the Mac app's SproutView) ----
-    private bool _hover;
+    /// Test hooks (called on the render thread): after each frame, and how long the Skia draw took (ms) with Sprout's size.
+    public static Action<SproutView>? Rendered { get; set; }
+    public static Action<double, double>? Painted { get; set; }
+
+    // ---- poking (the Mac app's SproutView), on the UI thread ----
+    private volatile bool _hover;
     private SproutMood? _reaction;
     private double _reactionUntil = double.NegativeInfinity, _dizzyUntil = double.NegativeInfinity, _lastTap = double.NegativeInfinity;
     private double _tapAt = double.NegativeInfinity;
@@ -101,97 +111,87 @@ public class SproutView : Control, Avalonia.Rendering.ICustomHitTest
         e.Handled = true;
     }
 
-    // ---- frames ----
+    // ---- the render-thread visual ----
+
+    private static readonly object Kick = new();
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        _attached = true;
         Cursor = new Cursor(StandardCursorType.Hand);
-        Tick();
-    }
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { base.OnDetachedFromVisualTree(e); _attached = false; }
-
-    /// Keeps drawing while on screen, at <see cref="Fps"/>, stepping on the display's own frame clock: a frame is
-    /// asked for when a whole Sprout frame has passed, give or take a third of one, so on a 120 Hz screen 60 fps is
-    /// exactly every other display frame (timing it from when Sprout last drew made it skip unevenly: measured).
-    private void Tick()
-    {
-        if (_ticking || !_attached || TopLevel.GetTopLevel(this) is not { } top) return;
-        _ticking = true;
-        top.RequestAnimationFrame(frame =>
+        _scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        if (_visual is null && ElementComposition.GetElementVisual(this)?.Compositor is { } compositor)
         {
-            _ticking = false;
-            if (!_attached) return;
-            double since = _lastTick == TimeSpan.MinValue ? double.MaxValue : (frame - _lastTick).TotalSeconds;
-            double fps = FpsOverride ?? Fps;
-            if (Active && IsEffectivelyVisible && (fps <= 0 || since >= (1 - 0.34) / fps))
-            {
-                _lastTick = frame;
-                InvalidateVisual();
-            }
-            Tick();
-        });
+            double canvas = BoxSize * 1.3, off = (BoxSize - canvas) / 2;
+            _visual = compositor.CreateCustomVisual(new Handler(this));
+            _visual.Size = new Vector(canvas, canvas);
+            _visual.Offset = new Vector3D(off, off, 0);
+            ElementComposition.SetElementChildVisual(this, _visual);
+        }
+        _visual?.SendHandlerMessage(Kick);
     }
 
-    /// Test hook: called after each frame Sprout draws (the perf probe times them).
-    public static Action<SproutView>? Rendered { get; set; }
-    /// Test hook: how long each Skia draw of Sprout took (ms), with Sprout's size.
-    public static Action<double, double>? Painted { get; set; }
-
-    public override void Render(DrawingContext ctx)
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        double t = _clock.Now;
-        _lastDraw = t;
-        Rendered?.Invoke(this);
-        if (Source is { } src) { var s = src(t); Mood = s.Mood; Gaze = s.Gaze; Headphones = s.Headphones; Pace = s.Pace; }
-        var mood = CurrentMood(t);
-        Showing = mood;
-        var look = !GazeFollowsMood ? Gaze : mood is SproutMood.Sleepy or SproutMood.Music ? default : mood == SproutMood.Running ? new Point(0.6, 0) : Gaze;
-        var (pose, gaze) = _tween.Pose(mood, look, t);
-        var (hp, phase) = _tween.Accessories(Headphones, Pace, t);
-        // a jelly squish after each tap
-        double since = t - _tapAt;
-        double squish = since < 0.6 ? 0.16 * Math.Exp(-since * 8) * Math.Cos(since * 24) : 0;
-        double canvas = BoxSize * 1.3, off = (BoxSize - canvas) / 2, inset = canvas * 0.115;
-        var rect = new Rect(off + inset, off + inset, canvas - 2 * inset, canvas - 2 * inset);
-        double scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
-        ctx.Custom(new Op(new Rect(off, off, canvas, canvas), rect, pose, t, gaze, squish, hp, phase, Prefs.Shared.Accent, LT.Light, scale));
+        base.OnDetachedFromVisualTree(e);
+        ElementComposition.SetElementChildVisual(this, null);
+        _visual = null;
     }
 
-    private sealed class Op : ICustomDrawOperation
+    private sealed class Handler : CompositionCustomVisualHandler
     {
-        private readonly Rect _sprout;
-        private readonly SproutPose _pose;
-        private readonly double _t, _squash, _hp, _phase;
-        private readonly Point _gaze;
-        private readonly Accent _accent;
-        private readonly bool _light;
-        private readonly double _scale;
+        private readonly SproutView _v;
+        private readonly SproutTween _tween = new();
+        private TimeSpan _last = TimeSpan.MinValue;
+        private bool _running;
 
-        public Op(Rect bounds, Rect sprout, SproutPose pose, double t, Point gaze, double squash, double hp, double phase, Accent accent, bool light, double scale)
+        public Handler(SproutView v) => _v = v;
+
+        public override void OnMessage(object message)
         {
-            _scale = scale;
-            Bounds = bounds; _sprout = sprout; _pose = pose; _t = t; _gaze = gaze; _squash = squash; _hp = hp; _phase = phase;
-            _accent = accent; _light = light;
+            if (message == Kick && !_running) { _running = true; Invalidate(); RegisterForNextAnimationFrameUpdate(); }
         }
 
-        public Rect Bounds { get; }
-        public bool HitTest(Point p) => false;
-        public bool Equals(ICustomDrawOperation? other) => false;
-        public void Dispose() { }
-
-        public void Render(ImmediateDrawingContext context)
+        /// Every display frame: draw a new Sprout frame if a whole one has passed (give or take a third), and keep going
+        /// while Sprout can be seen.
+        public override void OnAnimationFrameUpdate()
         {
+            if (!_v._active) { _running = false; return; }
+            double fps = _v.FpsOverride ?? _v.Fps;
+            var now = CompositionNow;
+            if (fps <= 0 || _last == TimeSpan.MinValue || (now - _last).TotalSeconds >= (1 - 0.34) / fps)
+            {
+                _last = now;
+                Invalidate();
+            }
+            RegisterForNextAnimationFrameUpdate();
+        }
+
+        public override void OnRender(ImmediateDrawingContext context)
+        {
+            var v = _v;
+            double t = v._clock.Now;
+            if (v.Source is { } src) { var s = src(t); v.Mood = s.Mood; v.Gaze = s.Gaze; v.Headphones = s.Headphones; v.Pace = s.Pace; }
+            var mood = v.CurrentMood(t);
+            v.Showing = mood;
+            var look = !v.GazeFollowsMood ? v.Gaze : mood is SproutMood.Sleepy or SproutMood.Music ? default : mood == SproutMood.Running ? new Point(0.6, 0) : v.Gaze;
+            var (pose, gaze) = _tween.Pose(mood, look, t);
+            var (hp, phase) = _tween.Accessories(v.Headphones, v.Pace, t);
+            // a jelly squish after each tap
+            double since = t - v._tapAt;
+            double squish = since < 0.6 ? 0.16 * Math.Exp(-since * 8) * Math.Cos(since * 24) : 0;
+            double canvas = v.BoxSize * 1.3, inset = canvas * 0.115;
+            var rect = new Rect(inset, inset, canvas - 2 * inset, canvas - 2 * inset);
+
             var lease = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
             if (lease is null) return;
             using var l = lease.Lease();
-            var canvas = l.SkCanvas;
             long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
-            canvas.Save();
-            SproutPainter.Draw(canvas, _sprout, _pose, _t, _gaze, _squash, true, _hp, _phase, _accent, _light, _scale);
-            canvas.Restore();
-            Painted?.Invoke(System.Diagnostics.Stopwatch.GetElapsedTime(t0).TotalMilliseconds, _sprout.Width);
+            l.SkCanvas.Save();
+            SproutPainter.Draw(l.SkCanvas, rect, pose, t, gaze, squish, true, hp, phase, Prefs.Shared.Accent, LT.Light, v._scale);
+            l.SkCanvas.Restore();
+            Painted?.Invoke(System.Diagnostics.Stopwatch.GetElapsedTime(t0).TotalMilliseconds, rect.Width);
+            Rendered?.Invoke(v);
         }
     }
 }

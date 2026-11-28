@@ -56,10 +56,11 @@ public sealed class NotchStage : Panel
         _bodyView = new ExpandedBody(model, clock);
         _pill = new TabPill(model, clock, () => Kick()) { Opacity = 0, IsHitTestVisible = false };
         _barHost.Children.Add(_barView);
-        // the little Sprout in the leading slot (30 pt, 18 pt in from the pill's end), drawn at 30 fps
+        // the little Sprout in the leading slot (30 pt, 18 pt in from the pill's end), at 60 fps like the Mac's
+        // (30 fps measured visibly uneven on Windows: 32–50 ms between frames)
         _buddy = new Sprout.SproutView(clock, 30)
         {
-            Fps = 30, GazeFollowsMood = true, IsHitTestVisible = false,
+            Fps = 60, GazeFollowsMood = true, IsHitTestVisible = false,
             FpsOverride = double.TryParse(Debug.Value("--mini-fps"), System.Globalization.CultureInfo.InvariantCulture, out var mf) ? mf : null,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             Margin = new Thickness(18, 0, 0, 0), IsVisible = Prefs.Shared.Buddy,
