@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Notchyyyy.Motion;
@@ -79,12 +80,21 @@ public sealed class HomeView : Canvas
         header.Children.Add(actions);
         header.Children.Add(words);
 
+        _m2 = m;
+        _mediaRow = new GlanceRow(IconKind.Note, "Nothing playing", "Spotify, Media Player or YouTube", clock, () => m.Tab = Tab.Media);
+        // the Mac's MusicBars before the chevron while something plays (drawn on the render thread)
+        _mediaBars = new LiveCanvas(clock, (c, size, now) => Sk.MusicBars(c, size.Width / 2, size.Height / 2, 1, Sk.C(_barsTint), now))
+        {
+            Width = 16, Height = 14, Fps = 30, Animating = _ => _barsOn, IsVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12 + 9 + 12, 0),
+        };
         var rows = new StackPanel
         {
             Spacing = 8, Width = RightWidth,
             Children =
             {
-                new GlanceRow(IconKind.Note, "Nothing playing", "Music, Spotify or YouTube", clock, () => m.Tab = Tab.Media),
+                new Panel { Children = { _mediaRow, _mediaBars } },
                 new GlanceRow(IconKind.Today, "Nothing planned today", "Add a task in Today", clock, () => m.Tab = Tab.Today),
                 new GlanceRow(IconKind.Clipboard, "Nothing copied yet", "What you copy is kept here", clock, () => m.Tab = Tab.Clipboard),
             },
@@ -100,18 +110,43 @@ public sealed class HomeView : Canvas
 
     private readonly StackPanel _actions;
     private IDisposable? _timer;
+    private readonly NotchModel _m2;
+    private readonly GlanceRow _mediaRow;
+    private readonly LiveCanvas _mediaBars;
+    private volatile bool _barsOn;
+    private Color _barsTint;
+
+    public GlanceRow MediaRow => _mediaRow;
+    public LiveCanvas MediaBars => _mediaBars;
+
+    /// The media row follows what's playing (the Mac's: title, then artist · app; bars while it plays).
+    private void OnMedia(string what)
+    {
+        var p = _m2.Media;
+        _mediaRow.Title = p.HasTrack ? p.Title : "Nothing playing";
+        _mediaRow.Detail = p.HasTrack ? string.Join(" · ", new[] { p.Artist, p.AppName }.Where(s => s.Length > 0)) : "Spotify, Media Player or YouTube";
+        _barsTint = p.Tint;
+        _barsOn = p.IsPlaying;
+        _mediaBars.IsVisible = p.IsPlaying;
+        _mediaRow.TrailingWidth = p.IsPlaying ? 16 + 12 : 0;
+        _mediaRow.InvalidateVisual();
+        _mediaBars.Kick();
+    }
 
     // the greeting and date refresh only while Home is on screen (a tab switch makes a new Home)
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         Refresh();      // Home is reused: catch up on anything that changed while it was away (a new name, the hour)
+        _m2.Media.Changed += OnMedia;
+        OnMedia("");
         _timer ??= DispatcherTimer.Run(() => { Refresh(); return true; }, TimeSpan.FromSeconds(20));
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         _timer?.Dispose(); _timer = null;
+        _m2.Media.Changed -= OnMedia;
     }
 
     public bool Refreshing => _timer is not null;
@@ -227,6 +262,8 @@ public sealed class GlanceRow : HoverControl
     private readonly IconKind _icon;
     public string Title { get; set; }
     public string Detail { get; set; }
+    /// Room kept before the chevron for something drawn there (the music bars).
+    public double TrailingWidth { get; set; }
     public GlanceRow(IconKind icon, string title, string detail, IClock clock, Action action) : base(clock)
     {
         _icon = icon; Title = title; Detail = detail; Action = action;
@@ -242,7 +279,7 @@ public sealed class GlanceRow : HoverControl
         ctx.DrawRectangle(new SolidColorBrush(LT.Wash.WithOpacity(0.05)), null, tile, 7, 7);
         Icons.Draw(ctx, _icon, tile.Center, 14 * Prefs.Shared.IconScale, Mix(LT.Muted, LT.AccentColor, h));
         var tf = new Typeface(LT.Ui, FontStyle.Normal, FontWeight.Medium);
-        double textW = w - 12 - 26 - 12 - 4 - 9 - 12 - 2;
+        double textW = w - 12 - 26 - 12 - 4 - 9 - 12 - 2 - TrailingWidth;
         var title = new FormattedText(Title, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, tf, LT.TextSize(12), new SolidColorBrush(LT.Text))
             { MaxTextWidth = textW, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
         var detail = new FormattedText(Detail, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(LT.Ui), LT.TextSize(11), new SolidColorBrush(LT.Muted))

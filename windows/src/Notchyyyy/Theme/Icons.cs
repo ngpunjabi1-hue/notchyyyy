@@ -4,7 +4,8 @@ using Avalonia.Media;
 namespace Notchyyyy.Theme;
 
 public enum IconKind { Home, Media, Today, Apps, Clipboard, Stopwatch, System, Settings, Close, More, Screenshot, Record, Drop, Chevron, Note,
-    Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare }
+    Brush, Pointer, Grid, Info, Minus, Plus, Power, Reset, Sparkle, Download, AppSquare,
+    Play, Pause, Next, Previous, Shuffle, Repeat, RepeatOne }
 
 /// <summary>
 /// Notchyyyy's own icon set (the Mac app uses SF Symbols, which can't ship on Windows): filled, rounded shapes
@@ -264,6 +265,66 @@ public static class Icons
                 Stroke(Line((12, 7), (12, 16)));
                 Stroke(Line((8.4, 12.6), (12, 16.2), (15.6, 12.6)));
                 break;
+            case IconKind.Play:         // a rounded triangle, its weight a touch right of centre like SF's play.fill
+                Shape(Poly((7, 4.6), (7, 19.4), (19.6, 12)));
+                break;
+            case IconKind.Pause:
+                Shape(new RectangleGeometry(new Rect(6, 4.8, 4.2, 14.4), 1.4, 1.4));
+                Shape(new RectangleGeometry(new Rect(13.8, 4.8, 4.2, 14.4), 1.4, 1.4));
+                break;
+            case IconKind.Next:         // two triangles pointing right (forward.fill)
+                Shape(Poly((2.6, 6), (2.6, 18), (12, 12)));
+                Shape(Poly((12, 6), (12, 18), (21.4, 12)));
+                break;
+            case IconKind.Previous:
+                Shape(Poly((21.4, 6), (21.4, 18), (12, 12)));
+                Shape(Poly((12, 6), (12, 18), (2.6, 12)));
+                break;
+            case IconKind.Shuffle:      // two crossing paths, each ending in an arrowhead
+            {
+                var a = new StreamGeometry();
+                using (var g = a.Open())
+                {
+                    g.BeginFigure(new Point(3, 7), false);
+                    g.LineTo(new Point(6.5, 7));
+                    g.CubicBezierTo(new Point(11.5, 7), new Point(12.5, 17), new Point(17.5, 17));
+                    g.LineTo(new Point(19.5, 17));
+                    g.EndFigure(false);
+                    g.BeginFigure(new Point(3, 17), false);
+                    g.LineTo(new Point(6.5, 17));
+                    g.CubicBezierTo(new Point(11.5, 17), new Point(12.5, 7), new Point(17.5, 7));
+                    g.LineTo(new Point(19.5, 7));
+                    g.EndFigure(false);
+                }
+                Stroke(a);
+                Shape(Poly((18.4, 3.6), (22.2, 7), (18.4, 10.4)));
+                Shape(Poly((18.4, 13.6), (22.2, 17), (18.4, 20.4)));
+                break;
+            }
+            case IconKind.Repeat:
+            case IconKind.RepeatOne:    // a loop: two rounded runs, each ending in an arrowhead
+            {
+                var a = new StreamGeometry();
+                using (var g = a.Open())
+                {
+                    g.BeginFigure(new Point(4, 12.5), false);
+                    g.LineTo(new Point(4, 10.5));
+                    g.ArcTo(new Point(8, 6.5), new Size(4, 4), 0, false, SweepDirection.Clockwise);
+                    g.LineTo(new Point(18.5, 6.5));
+                    g.EndFigure(false);
+                    g.BeginFigure(new Point(20, 11.5), false);
+                    g.LineTo(new Point(20, 13.5));
+                    g.ArcTo(new Point(16, 17.5), new Size(4, 4), 0, false, SweepDirection.Clockwise);
+                    g.LineTo(new Point(5.5, 17.5));
+                    g.EndFigure(false);
+                }
+                Stroke(a);
+                Shape(Poly((17.4, 3.2), (21.2, 6.5), (17.4, 9.8)));
+                Shape(Poly((6.6, 14.2), (2.8, 17.5), (6.6, 20.8)));
+                if (kind == IconKind.RepeatOne)
+                    Stroke(Line((10.6, 10.6), (12.2, 9.6), (12.2, 14.4)));
+                break;
+            }
             case IconKind.AppSquare:
                 Shape(new RectangleGeometry(new Rect(4, 4, 16, 16), 4.4, 4.4));
                 break;

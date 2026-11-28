@@ -94,7 +94,21 @@ public sealed class NotchModel
     public bool Expanded { get => _expanded; set => Set(ref _expanded, value, nameof(Expanded)); }
     public bool Hovering { get => _hovering; set => Set(ref _hovering, value, nameof(Hovering)); }
 
-    /// Stand-in for the media session until the Media step (plan step 6): `--demo` plays.
+    /// What's playing (Windows' media sessions; the demo track with `--demo`).
+    public global::Notchyyyy.Media.MediaPlayer Media { get; }
+
+    public NotchModel()
+    {
+        Media = new global::Notchyyyy.Media.MediaPlayer(new Motion.SystemClock());
+        Media.Changed += what =>
+        {
+            if (what is "Playing" or "Track") MusicPlaying = Media.IsPlaying;
+            // the pill shows the artwork and its colour
+            if (what is "Art" or "Track") Changed?.Invoke("MediaArt");
+        };
+    }
+
+    /// Music is playing (follows <see cref="Media"/>; tests may set it directly).
     public bool MusicPlaying { get => _musicPlaying; set => Set(ref _musicPlaying, value, nameof(MusicPlaying)); }
 
     /// Windows laptops have no notch: a slim pill centred at the top of the screen, like the Mac app on

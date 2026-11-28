@@ -292,6 +292,8 @@ public sealed class PillButton : SpringControl
     private readonly SpringValue _hover;
     public Action? Action { get; set; }
     public bool Enabled { get; set; } = true;
+    /// The Mac's prominent PillButton: filled with the accent, white text.
+    public bool Prominent { get; set; }
     public PillButton(IClock clock, string title, IconKind? icon, Action? action) : base(clock)
     {
         _title = title; _icon = icon; Action = action; _hover = Spring(0);
@@ -313,8 +315,18 @@ public sealed class PillButton : SpringControl
         double h = V(_hover.Value(Now));
         using var _ = ctx.PushOpacity(Enabled ? 1 : 0.4);
         var r = new Rect(0.5, 0.5, Bounds.Width - 1, 25);
-        ctx.DrawRectangle(new SolidColorBrush(LT.Wash.WithOpacity(0.04 + 0.04 * h)), new Pen(new SolidColorBrush(LT.Border), 1), r, 6, 6);
-        var c = Mix(LT.Muted, LT.Text, h);
+        Color c;
+        if (Prominent)
+        {
+            var a = LT.AccentColor;
+            ctx.DrawRectangle(new SolidColorBrush(Mix(a, Colors.White, 0.12 * h)), null, new Rect(0, 0, Bounds.Width, 26), 6, 6);
+            c = Colors.White;
+        }
+        else
+        {
+            ctx.DrawRectangle(new SolidColorBrush(LT.Wash.WithOpacity(0.04 + 0.04 * h)), new Pen(new SolidColorBrush(LT.Border), 1), r, 6, 6);
+            c = Mix(LT.Muted, LT.Text, h);
+        }
         double x = 9;
         if (_icon is { } icon) { Icons.Draw(ctx, icon, new Point(x + 5.5, 13), 13 * Prefs.Shared.IconScale, c); x += 15; }
         var t = Text(_title, 11, c, FontWeight.Medium);

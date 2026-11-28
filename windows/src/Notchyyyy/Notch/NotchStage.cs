@@ -46,6 +46,7 @@ public sealed class NotchStage : Panel
     public NotchStage(NotchModel model, IClock clock)
     {
         _m = model; _clock = clock;
+        model.Media.Clock = clock;
         var c = model.ClosedSize;
         _w = new SpringValue(c.Width); _h = new SpringValue(c.Height);
         _top = new SpringValue(6); _bottom = new SpringValue(10);
@@ -159,6 +160,9 @@ public sealed class NotchStage : Panel
             case nameof(NotchModel.Tab):
                 _bodyView.SwitchTo(_m.Tab, now, animate: _bodyShown);
                 _pill.Select(_m.Tab, now);
+                break;
+            case "MediaArt":   // new artwork or track: the pill's art and bar colour
+                _barView.Refresh();
                 break;
             default:   // live activity came or went
                 _barView.Refresh();
@@ -294,6 +298,7 @@ public sealed class NotchStage : Panel
         _buddy.Active = _barShown;
         // the big Sprout on Home draws only while the open body can be seen
         if (_bodyView.CurrentHome is { } home) home.Sprout.Active = _bodyShown;
+        if (_bodyView.CurrentMedia is { } media) media.Active = _bodyShown;
 
         UpdatePill(now);
         _bodyView.Update(now);

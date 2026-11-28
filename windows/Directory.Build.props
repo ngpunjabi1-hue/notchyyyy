@@ -7,5 +7,13 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Avalonia 12 ships analyzers built for a newer compiler than the .NET 8 SDK; they are not needed (no XAML). -->
     <NoWarn>$(NoWarn);CS9057</NoWarn>
+    <!-- On Windows the app targets the Windows 10 SDK, for the media sessions (SMTC) and other WinRT services;
+         elsewhere it is plain .NET (the Mac preview and the headless tests). `-p:NotchWindows=true` builds the
+         Windows flavour on the Mac too, to check it compiles. -->
+    <NotchWindows Condition="'$(NotchWindows)' == '' And '$(OS)' == 'Windows_NT'">true</NotchWindows>
+    <NotchTfm Condition="'$(NotchWindows)' == 'true'">net8.0-windows10.0.19041.0</NotchTfm>
+    <NotchTfm Condition="'$(NotchWindows)' != 'true'">net8.0</NotchTfm>
+    <EnableWindowsTargeting Condition="'$(NotchWindows)' == 'true'">true</EnableWindowsTargeting>
+    <SupportedOSPlatformVersion Condition="'$(NotchWindows)' == 'true'">10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 </Project>

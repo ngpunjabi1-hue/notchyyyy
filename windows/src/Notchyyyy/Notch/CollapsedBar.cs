@@ -8,7 +8,7 @@ namespace Notchyyyy.Notch;
 
 /// <summary>
 /// What the closed pill shows: a live activity either side of its centre (for now the music one: art on the
-/// left, bars on the right). With Sprout on, Sprout takes the left slot (it wears headphones while music plays)
+/// left, bars in the artwork's colour on the right). With Sprout on, Sprout takes the left slot (it wears headphones while music plays)
 /// and the art isn't shown, as on the Mac.
 /// </summary>
 public sealed class CollapsedBar : Control
@@ -49,16 +49,23 @@ public sealed class CollapsedBar : Control
         double h = Bounds.Height, inset = 6 + 12;   // the bar's padding, then inset from the rounded ends
         double now = _clock.Now;
 
-        var a = LT.AccentOf(Prefs.Shared.Accent);
-        // leading: the artwork (a stand-in until real media arrives), unless Sprout sits there
-        var art = new Rect(inset + 1, (h - 22) / 2, 22, 22);
-        var grad = new LinearGradientBrush
+        var media = _m.Media;
+        var a = media.HasTrack ? media.Tint : LT.AccentOf(Prefs.Shared.Accent);
+        // leading: the artwork (or a note without one), unless Sprout sits there
+        if (!Prefs.Shared.Buddy)
         {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(Shade(a, 1.15), 0), new GradientStop(Shade(a, 0.55), 1) },
-        };
-        if (!Prefs.Shared.Buddy) ctx.DrawRectangle(grad, null, art, 6, 6);
+            var box = new Rect(inset + 1, (h - 22) / 2, 22, 22);
+            if (media.Art is { } art)
+            {
+                // aspect fill, clipped to a rounded square
+                var src = art.Size;
+                double fit = Math.Max(22 / src.Width, 22 / src.Height);
+                var dst = new Rect(box.Center.X - src.Width * fit / 2, box.Center.Y - src.Height * fit / 2, src.Width * fit, src.Height * fit);
+                using (ctx.PushClip(new RoundedRect(box, 6)))
+                    ctx.DrawImage(art, new Rect(src), dst);
+            }
+            else Icons.Draw(ctx, IconKind.Note, box.Center, 13, Color.FromRgb(191, 191, 191));
+        }
 
         // trailing: four bars, each on its own beat (MusicBars, scaled 0.85)
         double cx = Bounds.Width - inset - 12, cy = h / 2, k = 0.85;
@@ -73,6 +80,4 @@ public sealed class CollapsedBar : Control
         Tick();
     }
 
-    private static Color Shade(Color c, double f) =>
-        Color.FromRgb((byte)Math.Clamp(c.R * f, 0, 255), (byte)Math.Clamp(c.G * f, 0, 255), (byte)Math.Clamp(c.B * f, 0, 255));
 }

@@ -11,10 +11,10 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 |---|------|--------------------|
 | 1 ✅ | **Scaffold + closed pill + hover open/close motion.** Transparent always-on-top overlay at top centre, the notch shape, the paired open/close springs, the content fade, hover tracking (open after the hover delay, close 0.35 s after leaving, no bounce-back). No shadow. | Spring maths unit-tested against the SwiftUI formulas; frame-by-frame renders at 60 fps measured from the pixels; a real-time recording on this Mac split into frames; screenshots in both themes. |
 | 2 ✅ | **GitHub Actions on Windows.** Build, tests, and a runner that launches the app, hovers it open and takes screenshots. Click-through and always-on-top checked on real Windows. | Green run, screenshots from the runner. |
-| 3 ✅ | **Glass tab bar + close button**, tab switching with the blur cross-fade, Esc and Ctrl+1…9. | Screenshots, UI self-test clicks every tab. |
+| 3 ✅ | **Glass tab bar + close button**, tab switching with a cross-fade, Esc and Ctrl+1…9. | Screenshots, UI self-test clicks every tab. |
 | 4 ✅ (awaiting your OK; smoothness to confirm on your laptop) | **Sprout** (the painter, poses and morphing, gaze, states) in the closed pill and on Home; **Home** (one-line greeting, icon quick actions). | Frame strips of every mood and each transition. |
-| 5 | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
-| 6 | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
+| 5 ✅ (awaiting your OK) | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
+| 6 (in review) | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
 | 7 | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
 | 8 | **Apps** (Start-menu apps, favourites, picker, edit mode). | Screenshots; Start-menu scan on the runner. |
 | 9 | **Today** (tasks, times, reminders) and **Stopwatch** (laps, keys, time in the closed pill). | UI self-test; screenshots. |
@@ -47,6 +47,15 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
   UI-thread redraws were uneven (16–25 ms). The little Sprout runs at 60 fps like the Mac's (30 was uneven on Windows).
 - **Home's third row is Clipboard** (the Mac's Agent row returns with the Agent tab in release 2).
 - **Screenshot / Record** press Windows' own Snipping Tool shortcuts (Win+Shift+S / Win+Shift+R) after the notch closes.
+- **Tab switches cross-fade without blur** (the Mac's blurFade blurs too). At 125 % scaling and up, Avalonia's
+  BlurEffect softens text by the same amount at any radius from 0.05 to 0.5 pt (measured), so a view could never
+  sharpen smoothly: it snapped from soft to crisp in one frame. `--blur-swap` brings the blur back for comparison;
+  a test proves the pop check catches that snap.
+- **Media on Windows** reads the system's media sessions (SMTC: Spotify, Media Player, browsers…). Shuffle and repeat
+  show only when the playing app supports them; with nothing playing the button opens Media Player. No app icon in
+  the "Playing from" chip (the Mac shows one).
+- **Raw Skia drawing applies the current opacity itself** (Sprout, the record, the colour field): without it the big
+  Sprout stayed fully opaque while Home cross-faded away (an old bug from step 4, found frame by frame in step 6).
 
 ## Where the code lives
 `ngpunjabi1-hue/notchyyyy` (public), folder `windows/`, branch `windows-port` (`main` untouched).

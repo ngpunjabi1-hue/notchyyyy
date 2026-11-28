@@ -64,8 +64,16 @@ public sealed class Shell
 
     public Shell()
     {
-        if (Theme.Debug.Has("--demo")) Model.MusicPlaying = true;
+        // what's playing: Windows' media sessions; the demo track with `--demo` (and nothing on the Mac preview otherwise)
+        Media.IMediaSource source = Theme.Debug.Has("--demo") ? new Media.DemoMediaSource()
+            : Theme.Debug.Has("--no-media") ? new Media.NoMediaSource()
+#if WINDOWS
+            : new Platform.SmtcSource();
+#else
+            : new Media.NoMediaSource();
+#endif
         Stage = new NotchStage(Model, Clock) { Width = StageWidth, Height = StageHeight };
+        Model.Media.Start(source);
         // Grayscale text smoothing, as on the Mac: Windows' default sub-pixel (ClearType) smoothing left red/blue
         // fringes on the text (seen on the Windows runner), and fringes turn into halos when text fades over a transparent window.
         TextOptions.SetTextRenderingMode(Stage, TextRenderingMode.Antialias);

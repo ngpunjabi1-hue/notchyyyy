@@ -9,17 +9,21 @@ using Notchyyyy.Theme;
 namespace Notchyyyy.Notch;
 
 /// <summary>
-/// Swaps one child for another in place with the Mac app's "blurFade": the outgoing view blurs and fades out
-/// while the incoming one sharpens and fades in, both on the snappy spring, on top of each other (nothing
-/// slides in from a side, so nothing shifts).
+/// Swaps one child for another in place: the outgoing view fades out while the incoming one fades in, both on the
+/// snappy spring, on top of each other (nothing slides in from a side, so nothing shifts).
+///
+/// The Mac app's "blurFade" also blurs them. On Windows that blur is off by default: at 125 % and up, Avalonia's
+/// BlurEffect softens text by the same amount at any radius from 0.05 to 0.5 pt (measured), so a view could never
+/// sharpen smoothly — it snapped from soft to crisp in one frame as the effect came off (and the reverse as a view
+/// started to leave). `--blur-swap` brings it back for comparison.
 /// </summary>
 public sealed class BlurSwap : Panel
 {
     private readonly List<(Control View, SpringValue Amount)> _items = new();
 
     public Control? Current => _items.Count > 0 ? _items[^1].View : null;
-    /// Test flag --no-blur-swap: plain cross-fade, to measure what the blur costs.
-    public static bool NoBlur { get; } = global::Notchyyyy.Theme.Debug.Has("--no-blur-swap");
+    /// Plain cross-fade (the default); `--blur-swap` adds the Mac's blur, for comparison.
+    public static bool NoBlur { get; set; } = !global::Notchyyyy.Theme.Debug.Has("--blur-swap");
 
     public void Show(Control view, double now, bool animate)
     {
@@ -81,14 +85,17 @@ public sealed class ExpandedBody : Grid
 
     // Home is made once and kept: building it again on every switch cost a visible stall (measured on Windows)
     private HomeView? _home;
+    private MediaView? _media;
     private Control Content(Tab tab) => tab switch
     {
         Tab.Home => _home ??= new HomeView(_m, _clock),
+        Tab.Media => _media ??= new MediaView(_m, _clock),
         Tab.Settings => new SettingsView(_m, _clock),
         _ => new TabPlaceholder(tab),
     };
 
     public SettingsView? CurrentSettings => _content.Current as SettingsView;
+    public MediaView? CurrentMedia => _content.Current as MediaView;
 
     public ExpandedBody(NotchModel m, IClock clock)
     {

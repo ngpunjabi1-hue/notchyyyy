@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Skia;
+using SkiaSharp;
 using Notchyyyy.Motion;
 using Notchyyyy.Theme;
 
@@ -186,10 +187,17 @@ public class SproutView : Control, Avalonia.Rendering.ICustomHitTest
             var lease = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
             if (lease is null) return;
             using var l = lease.Lease();
+            // Avalonia applies opacity per drawing call, so a raw Skia draw must apply it itself: without this,
+            // Sprout stayed fully opaque while Home cross-faded out around it (seen frame by frame)
+            double opacity = l.CurrentOpacity;
+            if (opacity <= 0.002) return;
             long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+            using var fade = opacity < 0.998 ? new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(opacity * 255)) } : null;
+            if (fade is not null) l.SkCanvas.SaveLayer(fade);
             l.SkCanvas.Save();
             SproutPainter.Draw(l.SkCanvas, rect, pose, t, gaze, squish, true, hp, phase, Prefs.Shared.Accent, LT.Light, v._scale);
             l.SkCanvas.Restore();
+            if (fade is not null) l.SkCanvas.Restore();
             Painted?.Invoke(System.Diagnostics.Stopwatch.GetElapsedTime(t0).TotalMilliseconds, rect.Width);
             Rendered?.Invoke(v);
         }

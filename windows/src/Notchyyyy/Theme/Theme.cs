@@ -23,6 +23,16 @@ public static class Debug
     }
     /// --sample: in-memory sample data; nothing is written to disk.
     public static bool Sample => Has("--sample");
+    /// Problems worth knowing about but not worth interrupting anyone for (stderr; `--log FILE` also appends there).
+    public static void Log(string line)
+    {
+        try
+        {
+            Console.Error.WriteLine(line);
+            if (Value("--log") is { } f) File.AppendAllText(f, $"{DateTime.Now:HH:mm:ss.fff} {line}\n");
+        }
+        catch { }
+    }
 }
 
 public enum Accent { Indigo, Blue, Teal, Green, Yellow, Orange, Pink, Graphite }

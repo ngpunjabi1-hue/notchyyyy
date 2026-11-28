@@ -134,7 +134,7 @@ public sealed class TabPill : Control, Avalonia.Rendering.ICustomHitTest
 
     // ---- drawing ----
 
-    private static void Glass(DrawingContext ctx, Geometry shape, Rect bounds)
+    internal static void Glass(DrawingContext ctx, Geometry shape, Rect bounds)
     {
         ctx.DrawGeometry(new SolidColorBrush(LT.Bg), null, shape);
         // a soft highlight along the top edge, fading out by the middle

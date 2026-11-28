@@ -338,6 +338,68 @@ public static class WinSelfTest
             Startup.Set(false);
             Check("launch at login: off removes it", !Startup.IsOn);
             if (wasOn) Startup.Set(true);
+#if WINDOWS
+            // ---- step 6: a real media session, published the way Spotify or a browser does (SMTC) ----
+            Windows.Media.Playback.MediaPlayer? mp = null;
+            try { mp = new Windows.Media.Playback.MediaPlayer(); }
+            catch (Exception e) { Log($"INFO can't make a media session on this machine: {e.Message}"); }
+            if (sh.Model.Media.Unavailable is { } why) Log($"INFO media sessions unavailable here: {why}");
+            else if (mp is not null)
+            {
+                const string Tune = "Notchyyyy self-test tune";
+                mp.CommandManager.IsEnabled = false;
+                var smtc = mp.SystemMediaTransportControls;
+                smtc.IsEnabled = true; smtc.IsPlayEnabled = true; smtc.IsPauseEnabled = true;
+                smtc.IsNextEnabled = true; smtc.IsPreviousEnabled = true;
+                var presses = new System.Collections.Concurrent.ConcurrentQueue<string>();
+                smtc.ButtonPressed += (_, a) => presses.Enqueue(a.Button.ToString());
+                smtc.DisplayUpdater.Type = Windows.Media.MediaPlaybackType.Music;
+                smtc.DisplayUpdater.MusicProperties.Title = Tune;
+                smtc.DisplayUpdater.MusicProperties.Artist = "Sprout";
+                smtc.DisplayUpdater.Update();
+                smtc.PlaybackStatus = Windows.Media.MediaPlaybackStatus.Playing;
+                var player = sh.Model.Media;
+                for (int i = 0; i < 60 && !(player.Title == Tune && player.IsPlaying); i++) await Wait(0.1);
+                Check("Media sees a playing media session", player.Title == Tune, $"title '{player.Title}', app '{player.AppName}' ({player.AppId})");
+                Check("it shows as playing, with its artist", player.IsPlaying && player.Artist == "Sprout");
+                Check("the closed pill shows music bars", sh.Model.LiveActivity);
+
+                sh.Model.Tab = Tab.Media;
+                SetCursorPos(pill.X, pill.Y);
+                await Wait(1.2);
+                var mv = sh.Stage.Body.CurrentMedia;
+                Check("opens on the Media tab, showing the player", mv is { ShowingPlayer: true });
+                Save(Capture(), Path.Combine(dir, $"{theme}-7-player-playing.png"));
+                if (mv is not null)
+                {
+                    var pp = mv.Play.TranslatePoint(new Point(mv.Play.Bounds.Width / 2, mv.Play.Bounds.Height / 2), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(pp.X), rc.T + Px(pp.Y));
+                    await Wait(0.3);
+                    Click();
+                    for (int i = 0; i < 30 && !presses.Contains("Pause"); i++) await Wait(0.1);
+                    Check("clicking pause reaches the playing app", presses.Contains("Pause"), string.Join(",", presses));
+                    // the app pauses: the notch follows
+                    smtc.PlaybackStatus = Windows.Media.MediaPlaybackStatus.Paused;
+                    for (int i = 0; i < 30 && player.IsPlaying; i++) await Wait(0.1);
+                    await Wait(0.9);   // past the moment the click's own state is kept
+                    Check("the app pausing shows as paused", !player.IsPlaying && !mv.Play.ShowsPause);
+                    var np = mv.NextButton.TranslatePoint(new Point(mv.NextButton.Bounds.Width / 2, mv.NextButton.Bounds.Height / 2), sh.Window)!.Value;
+                    SetCursorPos(rc.L + Px(np.X), rc.T + Px(np.Y));
+                    await Wait(0.3);
+                    Click();
+                    for (int i = 0; i < 30 && !presses.Contains("Next"); i++) await Wait(0.1);
+                    Check("clicking next reaches the playing app", presses.Contains("Next"), string.Join(",", presses));
+                    Save(Capture(), Path.Combine(dir, $"{theme}-8-player-paused.png"));
+                }
+                // the app goes away: back to "Nothing playing"
+                smtc.IsEnabled = false;
+                mp.Dispose();
+                for (int i = 0; i < 50 && player.HasTrack; i++) await Wait(0.1);
+                Check("when the app's session ends, it shows 'Nothing playing'", !player.HasTrack);
+                Keys(0x1B);
+                await Wait(0.8);
+            }
+#endif
             SetCursorPos(away.X, away.Y);
         }
         catch (Exception e) { Log("FAIL exception: " + e); }
