@@ -11,8 +11,8 @@ Each step ends with: build, run, screenshots in dark and light, automated checks
 |---|------|--------------------|
 | 1 ✅ | **Scaffold + closed pill + hover open/close motion.** Transparent always-on-top overlay at top centre, the notch shape, the paired open/close springs, the content fade, hover tracking (open after the hover delay, close 0.35 s after leaving, no bounce-back). No shadow. | Spring maths unit-tested against the SwiftUI formulas; frame-by-frame renders at 60 fps measured from the pixels; a real-time recording on this Mac split into frames; screenshots in both themes. |
 | 2 ✅ | **GitHub Actions on Windows.** Build, tests, and a runner that launches the app, hovers it open and takes screenshots. Click-through and always-on-top checked on real Windows. | Green run, screenshots from the runner. |
-| 3 ✅ (awaiting your OK) | **Glass tab bar + close button**, tab switching with the blur cross-fade, Esc and Ctrl+1…9. | Screenshots, UI self-test clicks every tab. |
-| 4 | **Sprout** (the painter, poses and morphing, gaze, states) in the closed pill and on Home; **Home** (one-line greeting, icon quick actions). | Frame strips of every mood and each transition. |
+| 3 ✅ | **Glass tab bar + close button**, tab switching with the blur cross-fade, Esc and Ctrl+1…9. | Screenshots, UI self-test clicks every tab. |
+| 4 ✅ (awaiting your OK; smoothness to confirm on your laptop) | **Sprout** (the painter, poses and morphing, gaze, states) in the closed pill and on Home; **Home** (one-line greeting, icon quick actions). | Frame strips of every mood and each transition. |
 | 5 | **Settings** (Appearance, Behaviour, Extras, Tabs, About), prefs saved to `%APPDATA%`, page anchored at the top and kept across theme rebuilds. | Every page in both themes; settings survive a restart. |
 | 6 | **Media**: SMTC on Windows, a demo source on the Mac; music bars in the closed pill. | `--demo` on the Mac; real SMTC on the runner and your laptop. |
 | 7 | **Clipboard** (text, images, colours with HEX/RGB/HSL, SVG, kept on disk). | Sample data screenshots; persistence test. |
@@ -41,6 +41,12 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
 - **Glass without blur**: the tab bar is opaque with a hairline edge and a top highlight. A transparent overlay
   window can't blur the desktop behind part of itself, and a 90 % tint let text behind it show through (seen on Windows).
 - **Keyboard returns** to the app you were in when the notch closes (Windows needs this explicitly).
+- **Sprout without per-frame blurs**: the glow is an exactly computed blurred-disc gradient; shadow, highlight and blush
+  are blurred once. Matches the live-blur original within 7/255 per pixel (tested).
+- **Sprout is animated by the render thread** (a composition visual): steady 60 fps on the Mac (worst frame 18.7 ms);
+  UI-thread redraws were uneven (16–25 ms). The little Sprout runs at 60 fps like the Mac's (30 was uneven on Windows).
+- **Home's third row is Clipboard** (the Mac's Agent row returns with the Agent tab in release 2).
+- **Screenshot / Record** press Windows' own Snipping Tool shortcuts (Win+Shift+S / Win+Shift+R) after the notch closes.
 
 ## Where the code lives
 `ngpunjabi1-hue/notchyyyy` (public), folder `windows/`, branch `windows-port` (`main` untouched).
@@ -49,3 +55,8 @@ CI: `.github/workflows/windows.yml` runs on every push to `windows-port` that to
 ## Display scaling
 Verified on the Windows runner at 100 % (1024×768) and, switched live by `ci/display.ps1`, at 125 % and 150 % (1920×1080):
 the full self-test passes at each (window size and centring, real-cursor hover and hot zone, clicks, keys, focus return).
+
+## Smoothness on Windows
+`--perf DIR` runs a scripted session and times every frame (src/Notchyyyy/PerfProbe.cs). The CI runner has no graphics
+chip (it renders with Direct3D's software rasteriser, WARP), so its numbers are a floor, not the real experience.
+Each CI run uploads **Notchyyyy-windows-test-build** (self-contained) with `measure-smoothness.cmd` for a real laptop.
