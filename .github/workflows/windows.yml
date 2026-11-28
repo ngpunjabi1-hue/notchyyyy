@@ -25,23 +25,28 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: .NET SDK in use (pinned by windows/global.json)
+        run: dotnet --version
+
       - name: Build
+        id: build
         run: dotnet build Notchyyyy.sln -c Release
 
       - name: Tests (springs, hover rules, pixel-level frames)
+        id: tests
         env:
           NOTCHYYYY_FRAMES: ${{ runner.temp }}/frames
         run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory "$env:RUNNER_TEMP/test-results"
 
       - name: Overlay self-test (dark)
-        if: always()
+        if: always() && steps.build.outcome == 'success'
         run: |
           $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--dark','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/selftest-dark.txt"
           exit $p.ExitCode
 
       - name: Overlay self-test (light)
-        if: always()
+        if: always() && steps.build.outcome == 'success'
         run: |
           $p = Start-Process -FilePath src/Notchyyyy/bin/Release/net8.0/Notchyyyy.exe -ArgumentList '--win-selftest','--light','--out',"$env:RUNNER_TEMP/selftest" -PassThru -Wait
           Get-Content "$env:RUNNER_TEMP/selftest/selftest-light.txt"

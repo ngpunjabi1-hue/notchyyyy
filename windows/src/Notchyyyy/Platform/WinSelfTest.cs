@@ -42,7 +42,7 @@ public static class WinSelfTest
     {
         var list = new List<INPUT>();
         foreach (var vk in vks) list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { vk = vk } } });
-        foreach (var vk in vks.Reverse()) list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { vk = vk, flags = 0x0002 } } });
+        foreach (var vk in Enumerable.Reverse(vks)) list.Add(new INPUT { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { vk = vk, flags = 0x0002 } } });
         SendInput((uint)list.Count, list.ToArray(), Marshal.SizeOf<INPUT>());
     }
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
