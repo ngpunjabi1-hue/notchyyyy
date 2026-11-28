@@ -36,7 +36,10 @@ jobs:
         id: tests
         env:
           NOTCHYYYY_FRAMES: ${{ runner.temp }}/frames
-        run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory "$env:RUNNER_TEMP/test-results"
+        # each test is named as it finishes; one stuck for 4 minutes is stopped and named (blame-hang), so a hang can't
+        # silently eat the whole job
+        timeout-minutes: 30
+        run: dotnet test Notchyyyy.sln -c Release --no-build --logger "trx;LogFileName=tests.trx" --logger "console;verbosity=normal" --blame-hang --blame-hang-timeout 4m --results-directory "$env:RUNNER_TEMP/test-results"
 
       # The build users get: precompiled (ReadyToRun) for Windows x64. Self-tests and measurements use it.
       - name: Publish (ReadyToRun, as shipped)
