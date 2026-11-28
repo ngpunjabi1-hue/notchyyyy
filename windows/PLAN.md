@@ -36,16 +36,16 @@ Voice notes (on-device Whisper, English and Hinglish), the Agent tab (Claude, Co
   has left (0.12 s) on close, so the two layouts never overlap (the Mac cross-fades them for ~0.1 s).
 - **Launch warm-up**: the open body is drawn invisibly for 3 frames at launch so the first open doesn't drop frames.
 - **Grayscale text smoothing** on Windows (as on the Mac): ClearType's red/blue fringes showed on the runner.
-
-## Where the code lives
-`ngpunjabi1-hue/notchyyyy` (public), folder `windows/`, branch `windows-port` (`main` untouched).
-CI: `.github/workflows/windows.yml` runs on every push to `windows-port` that touches `windows/`.
-
-## Verified only at 100 % display scaling
-The Windows runner's screen is 1024×768 at 100 %. Laptops usually run at 125–150 %; the cursor and window
-maths divide by the scaling, but that path is untested until a run at higher scaling or your laptop.
 - **Icons**: Notchyyyy's own vector set (SF Symbols can't ship on Windows), drawn without pushed transforms
   (Avalonia's off-screen renderer mis-composed them at 2x, dropping icons).
 - **Glass without blur**: the tab bar is opaque with a hairline edge and a top highlight. A transparent overlay
   window can't blur the desktop behind part of itself, and a 90 % tint let text behind it show through (seen on Windows).
 - **Keyboard returns** to the app you were in when the notch closes (Windows needs this explicitly).
+
+## Where the code lives
+`ngpunjabi1-hue/notchyyyy` (public), folder `windows/`, branch `windows-port` (`main` untouched).
+CI: `.github/workflows/windows.yml` runs on every push to `windows-port` that touches `windows/`.
+
+## Display scaling
+Verified on the Windows runner at 100 % (1024×768) and, switched live by `ci/display.ps1`, at 125 % and 150 % (1920×1080):
+the full self-test passes at each (window size and centring, real-cursor hover and hot zone, clicks, keys, focus return).

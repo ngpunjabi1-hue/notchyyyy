@@ -69,6 +69,16 @@ public static class DebugHarness
         if (Debug.Has("--hover-test")) HoverTest(s);
         if (Debug.Has("--win-selftest")) Platform.WinSelfTest.Run(s);
 
+        // --state-log FILE: every change of the notch's state, with the time, for checking real input from outside
+        if (Debug.Value("--state-log") is { } statePath)
+        {
+            void Write(string what) => File.AppendAllText(statePath,
+                $"{s.Clock.Now:0.000} {what} expanded={s.Model.Expanded} hovering={s.Model.Hovering} tab={s.Model.Tab}\n");
+            File.WriteAllText(statePath, "");
+            Write("start");
+            s.Model.Changed += Write;
+        }
+
         // --pointer-debug: where the app thinks the stage's top centre is on screen, and where the pointer is
         if (Debug.Has("--pointer-debug"))
             At(1.5, () =>
